@@ -52,9 +52,12 @@ export function FloatingTabBar({ state, descriptors, navigation, insets }: Botto
               target: route.key,
               canPreventDefault: true,
             });
-            if (!focused && !event.defaultPrevented) {
-              navigation.navigate(route.name, route.params);
+            if (event.defaultPrevented) return;
+            if (focused) {
+              navigation.navigate(route.name, { screen: 'index' });
+              return;
             }
+            navigation.navigate(route.name, route.params);
           };
 
           return (

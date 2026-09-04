@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { Button } from '@/src/components/ui/Button';
 import { ListRow } from '@/src/components/ui/ListRow';
 import { Screen } from '@/src/components/ui/Screen';
+import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { EmptyState, ErrorState, LoadingState } from '@/src/components/ui/States';
 import { listGroupsForClient, listGroupsForTransporter } from '@/src/services/groups';
 import { getVehicle } from '@/src/services/vehicles';
@@ -35,6 +36,14 @@ export default function GroupsTab() {
 
   return (
     <Screen tab>
+        <ScreenTitle
+          title="Grupos"
+          subtitle={
+            isTransporter
+              ? 'Veículo, rota e membros'
+              : 'Vans vinculadas à sua família'
+          }
+        />
         {query.isLoading ? <LoadingState /> : null}
         {query.isError ? <ErrorState message="Falha ao carregar grupos." /> : null}
         {query.data?.length === 0 ? (

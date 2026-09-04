@@ -1,12 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
 import { Input } from '@/src/components/ui/Input';
 import { Screen } from '@/src/components/ui/Screen';
+import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { vehicleSchema } from '@/src/lib/schemas';
 import { createVehicle } from '@/src/services/vehicles';
 import { colors } from '@/src/theme/colors';
@@ -39,8 +40,13 @@ export default function NewVehicleScreen() {
     },
   });
 
+  if (user?.user_metadata.role !== 'transporter') {
+    return <Redirect href="/(app)/(tabs)/profile" />;
+  }
+
   return (
     <Screen tab showBack>
+        <ScreenTitle title="Novo veículo" subtitle="Tipo e placa" />
         <Text style={styles.label}>Tipo</Text>
         <View style={styles.chips}>
           {TYPES.map((type) => {

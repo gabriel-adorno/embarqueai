@@ -157,12 +157,19 @@ export default function HomeScreen() {
                 icon="location-outline"
                 glyph="📍"
                 title="Rota ao vivo"
-                subtitle="Localização do transporte em tempo real"
-                onPress={() => {
-                  if (mapQuery.data?.tripId) {
-                    router.push(href(`/(app)/(tabs)/index/trip/${mapQuery.data.tripId}`));
-                  }
-                }}
+                subtitle={
+                  live
+                    ? 'Localização do transporte em tempo real'
+                    : 'Nenhuma rota em andamento agora'
+                }
+                onPress={
+                  mapQuery.data?.tripId
+                    ? () =>
+                        router.push(
+                          href(`/(app)/(tabs)/index/trip/${mapQuery.data!.tripId}`),
+                        )
+                    : undefined
+                }
               />
               <ListRow
                 icon="people-outline"

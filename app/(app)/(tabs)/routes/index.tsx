@@ -7,6 +7,7 @@ import { Button } from '@/src/components/ui/Button';
 import { ConfirmModal } from '@/src/components/ui/ConfirmModal';
 import { ListRow } from '@/src/components/ui/ListRow';
 import { Screen } from '@/src/components/ui/Screen';
+import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { EmptyState, ErrorState, LoadingState } from '@/src/components/ui/States';
 import { listGroupsForTransporter } from '@/src/services/groups';
 import { listRoutePoints, listRoutes, updateRouteStatus } from '@/src/services/routes';
@@ -81,6 +82,7 @@ export default function RoutesTab() {
   return (
     <>
     <Screen tab>
+        <ScreenTitle title="Rotas" subtitle="Pontos e início do trajeto" />
         {query.isLoading ? <LoadingState /> : null}
         {query.isError ? <ErrorState message="Falha ao carregar rotas." /> : null}
         {query.data?.length === 0 ? (

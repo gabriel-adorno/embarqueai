@@ -6,6 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/src/components/ui/Button';
 import { Input } from '@/src/components/ui/Input';
 import { Screen } from '@/src/components/ui/Screen';
+import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { LoadingState } from '@/src/components/ui/States';
 import { getProfile, updateProfile } from '@/src/services/profiles';
 import { colors } from '@/src/theme/colors';
@@ -45,6 +46,14 @@ export default function ProfileTab() {
 
   return (
     <Screen tab>
+        <ScreenTitle
+          title="Conta"
+          subtitle={
+            role === 'transporter'
+              ? 'Seus dados e veículos'
+              : 'Seus dados da família'
+          }
+        />
         {query.isLoading ? <LoadingState /> : null}
         {query.data ? (
           <>

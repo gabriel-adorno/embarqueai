@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
+import { ConfirmModal } from '@/src/components/ui/ConfirmModal';
 import { Input } from '@/src/components/ui/Input';
 import { ListRow } from '@/src/components/ui/ListRow';
 import { Screen } from '@/src/components/ui/Screen';
+import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { EmptyState, ErrorState, LoadingState } from '@/src/components/ui/States';
 import {
   addGroupMemberByEmail,
@@ -28,18 +30,19 @@ export default function GroupDetailScreen() {
   const user = useSessionStore((s) => s.session?.user);
   const isTransporter = user?.user_metadata.role === 'transporter';
   const [email, setEmail] = useState('');
+  const [removeUserId, setRemoveUserId] = useState<string | null>(null);
 
   const query = useQuery({
-    queryKey: ['group', id],
+    queryKey: ['group', id, isTransporter],
     enabled: Boolean(id),
     queryFn: async () => {
       const group = await getGroup(id);
       if (!group) throw new Error('Grupo não encontrado.');
-      const [members, vehicle, transporter, trip] = await Promise.all([
-        listGroupMembers(group.id),
+      const [vehicle, transporter, trip, members] = await Promise.all([
         getVehicle(group.vehicle_id),
         getProfile(group.transporter_id),
         listActiveTripForGroup(group.id),
+        isTransporter ? listGroupMembers(group.id) : Promise.resolve([]),
       ]);
       return { group, members, vehicle, transporter, trip };
     },
@@ -61,7 +64,14 @@ export default function GroupDetailScreen() {
   });
 
   return (
+    <>
     <Screen tab showBack>
+        <ScreenTitle
+          title={query.data?.group.name ?? 'Grupo'}
+          subtitle={
+            isTransporter ? 'Veículo, motorista e membros' : 'Van e motorista do grupo'
+          }
+        />
         {query.isLoading ? <LoadingState /> : null}
         {query.isError ? <ErrorState message="Não foi possível abrir o grupo." /> : null}
         {query.data ? (
@@ -89,49 +99,64 @@ export default function GroupDetailScreen() {
                   router.push(href(`/(app)/(tabs)/index/trip/${query.data.trip!.id}`))
                 }
               />
+            ) : !isTransporter ? (
+              <EmptyState
+                title="Nenhuma rota em andamento"
+                hint="Quando o trajeto começar, você acompanha a van ao vivo."
+              />
             ) : null}
-            {query.data.members.length === 0 ? (
-              <EmptyState title="Sem membros" hint="Adicione um cliente pelo e-mail." />
-            ) : null}
-            {query.data.members.map((member) => (
-              <View key={member.user_id} style={styles.block}>
-                <ListRow
-                  icon="person-outline"
-                  glyph="👤"
-                  title={member.profile.name}
-                  subtitle={[member.profile.email, member.profile.phone]
-                    .filter(Boolean)
-                    .join(' · ')}
-                />
-                {isTransporter ? (
-                  <Button
-                    label="Remover"
-                    variant="danger"
-                    onPress={() => removeMut.mutate(member.user_id)}
-                  />
-                ) : null}
-              </View>
-            ))}
             {isTransporter ? (
-              <View style={styles.add}>
-                <Input
-                  label="Adicionar membro por e-mail"
-                  placeholder="cliente@embarqueai.com"
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  value={email}
-                  onChangeText={setEmail}
-                />
-                <Button
-                  label="Adicionar"
-                  loading={addMut.isPending}
-                  onPress={() => addMut.mutate()}
-                />
-              </View>
+              <>
+                {query.data.members.length === 0 ? (
+                  <EmptyState title="Sem membros" hint="Adicione um cliente pelo e-mail." />
+                ) : null}
+                {query.data.members.map((member) => (
+                  <View key={member.user_id} style={styles.block}>
+                    <ListRow
+                      icon="person-outline"
+                      glyph="👤"
+                      title={member.profile.name}
+                      subtitle={[member.profile.email, member.profile.phone]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    />
+                    <Button
+                      label="Remover"
+                      variant="danger"
+                      onPress={() => setRemoveUserId(member.user_id)}
+                    />
+                  </View>
+                ))}
+                <View style={styles.add}>
+                  <Input
+                    label="Adicionar membro por e-mail"
+                    placeholder="cliente@embarqueai.com"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    value={email}
+                    onChangeText={setEmail}
+                  />
+                  <Button
+                    label="Adicionar"
+                    loading={addMut.isPending}
+                    onPress={() => addMut.mutate()}
+                  />
+                </View>
+              </>
             ) : null}
           </>
         ) : null}
     </Screen>
+      <ConfirmModal
+        visible={Boolean(removeUserId)}
+        title="Certeza que deseja remover este membro?"
+        onNo={() => setRemoveUserId(null)}
+        onYes={() => {
+          if (removeUserId) removeMut.mutate(removeUserId);
+          setRemoveUserId(null);
+        }}
+      />
+    </>
   );
 }
 

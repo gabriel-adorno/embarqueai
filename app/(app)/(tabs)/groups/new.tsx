@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -23,15 +23,16 @@ export default function NewGroupScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const user = useSessionStore((s) => s.session?.user);
+  const isTransporter = user?.user_metadata.role === 'transporter';
 
   const vehicles = useQuery({
     queryKey: ['vehicles', user?.id],
-    enabled: Boolean(user),
+    enabled: Boolean(user) && isTransporter,
     queryFn: () => listVehicles(user!.id),
   });
   const routes = useQuery({
     queryKey: ['routes', user?.id],
-    enabled: Boolean(user),
+    enabled: Boolean(user) && isTransporter,
     queryFn: () => listRoutes(user!.id),
   });
 
@@ -50,6 +51,10 @@ export default function NewGroupScreen() {
     },
     onError: (err: Error) => notifyError(err.message),
   });
+
+  if (!isTransporter) {
+    return <Redirect href="/(app)/(tabs)/groups" />;
+  }
 
   return (
     <Screen tab showBack>

@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Redirect, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
+import { ConfirmModal } from '@/src/components/ui/ConfirmModal';
 import { ListRow } from '@/src/components/ui/ListRow';
 import { Screen } from '@/src/components/ui/Screen';
+import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { EmptyState, ErrorState, LoadingState } from '@/src/components/ui/States';
 import { href } from '@/src/lib/href';
 import { deleteVehicle, listVehicles } from '@/src/services/vehicles';
@@ -14,6 +17,7 @@ export default function VehiclesScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const user = useSessionStore((s) => s.session?.user);
+  const [removeId, setRemoveId] = useState<string | null>(null);
 
   const query = useQuery({
     queryKey: ['vehicles', user?.id],
@@ -31,7 +35,9 @@ export default function VehiclesScreen() {
   }
 
   return (
+    <>
     <Screen tab showBack>
+        <ScreenTitle title="Veículos" subtitle="Tipo e placa" />
         {query.isLoading ? <LoadingState /> : null}
         {query.isError ? <ErrorState message="Falha ao carregar veículos." /> : null}
         {query.data?.length === 0 ? (
@@ -48,7 +54,7 @@ export default function VehiclesScreen() {
             <Button
               label="Remover"
               variant="danger"
-              onPress={() => remove.mutate(vehicle.id)}
+              onPress={() => setRemoveId(vehicle.id)}
             />
           </View>
         ))}
@@ -59,6 +65,16 @@ export default function VehiclesScreen() {
           />
         </View>
     </Screen>
+      <ConfirmModal
+        visible={Boolean(removeId)}
+        title="Certeza que deseja remover este veículo?"
+        onNo={() => setRemoveId(null)}
+        onYes={() => {
+          if (removeId) remove.mutate(removeId);
+          setRemoveId(null);
+        }}
+      />
+    </>
   );
 }
 
