@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Redirect, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
@@ -9,7 +9,7 @@ import { ListRow } from '@/src/components/ui/ListRow';
 import { Screen } from '@/src/components/ui/Screen';
 import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { EmptyState, ErrorState, LoadingState } from '@/src/components/ui/States';
-import { listGroupsForTransporter } from '@/src/services/groups';
+import { listGroupsForClient, listGroupsForTransporter } from '@/src/services/groups';
 import { listRoutePoints, listRoutes, updateRouteStatus } from '@/src/services/routes';
 import { listActiveTripForRoute, startTrip, stopTrip } from '@/src/services/trips';
 import { useSessionStore } from '@/src/store/session';
@@ -20,24 +20,41 @@ export default function RoutesTab() {
   const router = useRouter();
   const qc = useQueryClient();
   const user = useSessionStore((s) => s.session?.user);
+  const isTransporter = user?.user_metadata.role === 'transporter';
   const [confirmStart, setConfirmStart] = useState<string | null>(null);
   const [confirmStop, setConfirmStop] = useState<string | null>(null);
 
   const query = useQuery({
-    queryKey: ['routes', user?.id],
+    queryKey: ['routes', user?.id, isTransporter],
     enabled: Boolean(user),
+    refetchInterval: isTransporter ? false : 8_000,
     queryFn: async () => {
       if (!user) return [];
-      const routes = await listRoutes(user.id);
+      const [routes, groups] = await Promise.all([
+        listRoutes(user.id),
+        isTransporter
+          ? listGroupsForTransporter(user.id)
+          : listGroupsForClient(user.id),
+      ]);
       return Promise.all(
-        routes.map(async (route) => ({
-          ...route,
-          points: await listRoutePoints(route.id),
-          trip: await listActiveTripForRoute(route.id),
-        })),
+        routes.map(async (route) => {
+          const linked = groups.filter((g) => g.route_id === route.id);
+          return {
+            ...route,
+            points: (await listRoutePoints(route.id)) ?? [],
+            trip: await listActiveTripForRoute(route.id),
+            groupNames: linked.map((g) => g.name),
+          };
+        }),
       );
     },
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      void query.refetch();
+    }, [query.refetch]),
+  );
 
   const startMut = useMutation({
     mutationFn: async (routeId: string) => {
@@ -57,7 +74,7 @@ export default function RoutesTab() {
     },
     onSuccess: (trip) => {
       void qc.invalidateQueries();
-      router.push(href(`/(app)/(tabs)/index/trip/${trip.id}`));
+      router.push(href(`/(app)/(tabs)/routes/${trip.route_id}`));
     },
     onError: (err: Error) => notifyError(err.message),
   });
@@ -75,44 +92,74 @@ export default function RoutesTab() {
     onError: (err: Error) => notifyError(err.message),
   });
 
-  if (user?.user_metadata.role !== 'transporter') {
-    return <Redirect href="/(app)/(tabs)" />;
-  }
+  const openLive = (routeId: string) => {
+    router.push(href({ pathname: '/(app)/(tabs)/routes/[id]', params: { id: routeId } }));
+  };
 
   return (
     <>
     <Screen tab>
-        <ScreenTitle title="Rotas" subtitle="Pontos e início do trajeto" />
+        <ScreenTitle
+          title="Rotas"
+          subtitle={
+            isTransporter
+              ? 'Inicie o trajeto para o aluno ver o mapa ao vivo'
+              : 'Todas as rotas dos seus grupos'
+          }
+        />
         {query.isLoading ? <LoadingState /> : null}
         {query.isError ? <ErrorState message="Falha ao carregar rotas." /> : null}
         {query.data?.length === 0 ? (
-          <EmptyState title="Nenhuma rota" hint="Crie uma rota com pelo menos dois pontos." />
+          <EmptyState
+            title="Nenhuma rota"
+            hint={
+              isTransporter
+                ? 'Crie uma rota e selecione os grupos de alunos.'
+                : 'Quando o transportador vincular seu grupo a uma rota, ela aparece aqui.'
+            }
+          />
         ) : null}
-        {query.data?.map((route) => (
-          <View key={route.id} style={styles.block}>
-            <ListRow
-              icon="navigate-outline"
-              glyph="🧭"
-              title={route.name}
-              subtitle={`${route.points.length} pontos · ${statusLabel(route.status)}`}
-              onPress={() =>
-                route.trip ? setConfirmStop(route.id) : setConfirmStart(route.id)
-              }
-            />
-            {route.trip ? (
-              <Button
-                label="Parar trajeto"
-                variant="danger"
-                onPress={() => setConfirmStop(route.id)}
+        {query.data?.map((route) => {
+          const live = Boolean(route.trip);
+          const groupsLabel = route.groupNames.length
+            ? route.groupNames.join(', ')
+            : 'Sem grupo';
+          return (
+            <View key={route.id} style={styles.block}>
+              <ListRow
+                icon="navigate-outline"
+                glyph="🧭"
+                title={route.name}
+                subtitle={`${groupsLabel} · ${live ? 'Ao vivo' : 'Aguardando início'}`}
+                onPress={live ? () => openLive(route.id) : undefined}
               />
-            ) : (
-              <Button label="Iniciar rota" onPress={() => setConfirmStart(route.id)} />
-            )}
+              {isTransporter ? (
+                live ? (
+                  <>
+                    <Button label="Ver mapa ao vivo" onPress={() => openLive(route.id)} />
+                    <Button
+                      label="Parar trajeto"
+                      variant="danger"
+                      onPress={() => setConfirmStop(route.id)}
+                    />
+                  </>
+                ) : (
+                  <Button label="Iniciar rota" onPress={() => setConfirmStart(route.id)} />
+                )
+              ) : live ? (
+                <Button label="Acompanhar ao vivo" onPress={() => openLive(route.id)} />
+              ) : null}
+            </View>
+          );
+        })}
+        {isTransporter ? (
+          <View style={styles.footer}>
+            <Button
+              label="Criar rota"
+              onPress={() => router.push(href({ pathname: '/(app)/(tabs)/routes/new' }))}
+            />
           </View>
-        ))}
-        <View style={styles.footer}>
-          <Button label="Criar rota" onPress={() => router.push(href('/(app)/(tabs)/routes/new'))} />
-        </View>
+        ) : null}
     </Screen>
       <ConfirmModal
         visible={Boolean(confirmStart)}
@@ -134,12 +181,6 @@ export default function RoutesTab() {
       />
     </>
   );
-}
-
-function statusLabel(status: string) {
-  if (status === 'active') return 'Em andamento';
-  if (status === 'stopped') return 'Parada';
-  return 'Rascunho';
 }
 
 const styles = StyleSheet.create({

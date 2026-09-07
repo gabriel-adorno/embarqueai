@@ -2,14 +2,24 @@
  * Trocar corpo por supabase.from('trips') / supabase.from('trip_positions').
  * subscribeTripPosition: depois vira canal Supabase Realtime em trip_positions.
  */
+import { isRemote } from '@/src/lib/config';
 import { uuid } from '@/src/lib/uuid';
+import * as remote from '@/src/services/remote';
 import { loadDb, mutateDb } from '@/src/services/store';
 import type { Trip, TripPosition } from '@/src/types/database';
 
 export async function listActiveTripForGroup(
   groupId: string,
 ): Promise<Trip | null> {
+  if (isRemote()) return remote.listActiveTripForGroup(groupId);
   const db = await loadDb();
+  const group = db.groups.find((g) => g.id === groupId);
+  if (group?.route_id) {
+    const byRoute = db.trips.find(
+      (t) => t.route_id === group.route_id && t.status === 'in_progress',
+    );
+    if (byRoute) return byRoute;
+  }
   return (
     db.trips.find((t) => t.group_id === groupId && t.status === 'in_progress') ??
     null
@@ -19,6 +29,7 @@ export async function listActiveTripForGroup(
 export async function listActiveTripForRoute(
   routeId: string,
 ): Promise<Trip | null> {
+  if (isRemote()) return remote.listActiveTripForRoute(routeId);
   const db = await loadDb();
   return (
     db.trips.find((t) => t.route_id === routeId && t.status === 'in_progress') ??
@@ -27,6 +38,7 @@ export async function listActiveTripForRoute(
 }
 
 export async function getTrip(id: string): Promise<Trip | null> {
+  if (isRemote()) return remote.getTrip(id);
   const db = await loadDb();
   return db.trips.find((t) => t.id === id) ?? null;
 }
@@ -37,6 +49,7 @@ export async function startTrip(input: {
   lat: number;
   lng: number;
 }): Promise<Trip> {
+  if (isRemote()) return remote.startTrip(input);
   const trip: Trip = {
     id: uuid(),
     route_id: input.route_id,
@@ -58,6 +71,7 @@ export async function startTrip(input: {
 }
 
 export async function stopTrip(tripId: string): Promise<Trip> {
+  if (isRemote()) return remote.stopTrip(tripId);
   let updated: Trip | undefined;
   await mutateDb((db) => {
     const trip = db.trips.find((t) => t.id === tripId);
@@ -87,6 +101,7 @@ export async function appendTripPosition(
 export async function getLatestTripPosition(
   tripId: string,
 ): Promise<TripPosition | null> {
+  if (isRemote()) return remote.getLatestTripPosition(tripId);
   const db = await loadDb();
   const positions = db.trip_positions.filter((p) => p.trip_id === tripId);
   return positions[positions.length - 1] ?? null;
@@ -100,6 +115,7 @@ export function subscribeTripPosition(
   tripId: string,
   callback: (position: TripPosition) => void,
 ): () => void {
+  if (isRemote()) return remote.subscribeTripPosition(tripId, callback);
   let t = 0;
   const timer = setInterval(() => {
     void (async () => {

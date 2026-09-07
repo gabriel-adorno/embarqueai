@@ -11,6 +11,7 @@ const TAB_ICONS: Record<string, IconName> = {
   index: 'map',
   groups: 'groups',
   routes: 'routes',
+  vehicles: 'bus',
   profile: 'account',
 };
 

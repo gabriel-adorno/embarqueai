@@ -1,103 +1,116 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapView } from '@/src/components/map/MapView';
 import { BottomSheet } from '@/src/components/ui/BottomSheet';
-import { BrandMark } from '@/src/components/ui/BrandMark';
-import { Button } from '@/src/components/ui/Button';
-import { ListRow } from '@/src/components/ui/ListRow';
 import { MapTopBar } from '@/src/components/ui/MapTopBar';
-import { EmptyState, ErrorState, LoadingState } from '@/src/components/ui/States';
-import { listGroupsForClient, listGroupsForTransporter } from '@/src/services/groups';
-import { buildRoutePolyline, DEFAULT_REGION, regionFromPoints } from '@/src/services/maps';
-import { listRoutePoints } from '@/src/services/routes';
-import { getLatestTripPosition, listActiveTripForGroup } from '@/src/services/trips';
-import { href } from '@/src/lib/href';
+import { Screen } from '@/src/components/ui/Screen';
+import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
+import { EmptyState, LoadingState } from '@/src/components/ui/States';
+import { getRoutePolyline, regionFromPoints } from '@/src/services/maps';
+import { listRoutePoints, listRoutes } from '@/src/services/routes';
+import {
+  getLatestTripPosition,
+  listActiveTripForRoute,
+  subscribeTripPosition,
+} from '@/src/services/trips';
 import { colors } from '@/src/theme/colors';
+import { TAB_SCREEN_BOTTOM } from '@/src/theme/layout';
 import { useSessionStore } from '@/src/store/session';
+import type { MapMarker, MapPolyline, TripPosition } from '@/src/types/database';
 
 export default function HomeScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
   const session = useSessionStore((s) => s.session);
   const user = session?.user;
-  const role = user?.user_metadata.role;
-  const isTransporter = role === 'transporter';
-  const firstName = user?.user_metadata.name.split(' ')[0] ?? '';
+  const firstName = user?.user_metadata.name?.split(' ')[0] ?? '';
+  const [livePos, setLivePos] = useState<TripPosition | null>(null);
 
-  const groupsQuery = useQuery({
-    queryKey: ['groups', role, user?.id],
+  const query = useQuery({
+    queryKey: ['home-routes', user?.id],
     enabled: Boolean(user),
+    staleTime: 15_000,
+    refetchInterval: 15_000,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!user) return [];
-      return isTransporter
-        ? listGroupsForTransporter(user.id)
-        : listGroupsForClient(user.id);
+      const routes = await listRoutes(user.id);
+      return Promise.all(
+        routes.map(async (route) => {
+          const points = (await listRoutePoints(route.id)) ?? [];
+          const line = await getRoutePolyline(points);
+          const trip = await listActiveTripForRoute(route.id);
+          const position =
+            trip?.status === 'in_progress' ? await getLatestTripPosition(trip.id) : null;
+          return { route, points, line, trip, position };
+        }),
+      );
     },
   });
 
-  const mapQuery = useQuery({
-    queryKey: ['home-map', groupsQuery.data?.map((g) => g.id).join(',')],
-    enabled: Boolean(groupsQuery.data),
-    queryFn: async () => {
-      const groups = groupsQuery.data ?? [];
-      const first = groups[0];
-      if (!first) {
-        return { markers: [], polyline: undefined, region: DEFAULT_REGION, tripId: null };
-      }
-      const points = await listRoutePoints(first.route_id);
-      const trip = await listActiveTripForGroup(first.id);
-      const position = trip ? await getLatestTripPosition(trip.id) : null;
-      const markers = points.map((p) => ({
-        id: p.id,
-        title: p.name,
-        lat: p.lat,
-        lng: p.lng,
-      }));
-      if (position) {
-        markers.push({
-          id: `van-${trip?.id}`,
-          title: 'Van',
-          lat: position.lat,
-          lng: position.lng,
-        });
-      }
-      return {
-        markers,
-        polyline: buildRoutePolyline(points),
-        region: regionFromPoints(points),
-        tripId: trip?.id ?? null,
-        groupId: first.id,
-      };
-    },
-  });
+  const liveTrip = query.data?.find((item) => item.trip?.status === 'in_progress')?.trip;
 
-  const live = Boolean(mapQuery.data?.tripId);
+  useEffect(() => {
+    if (!liveTrip?.id) {
+      setLivePos(null);
+      return;
+    }
+    return subscribeTripPosition(liveTrip.id, setLivePos);
+  }, [liveTrip?.id]);
+
+  const routes = query.data ?? [];
+  const allPoints = routes.flatMap((item) => item.points);
+  const regionRef = useRef(allPoints.length ? regionFromPoints(allPoints) : null);
+  if (allPoints.length && !regionRef.current) {
+    regionRef.current = regionFromPoints(allPoints);
+  }
+
+  if (query.isPending && !query.data) {
+    return (
+      <Screen tab>
+        <LoadingState />
+      </Screen>
+    );
+  }
+
+  if (!routes.length) {
+    return (
+      <Screen tab>
+        <ScreenTitle title={`Olá, ${firstName}`} subtitle="EmbarqueAI" />
+        <EmptyState title="Nenhuma rota" hint="Quando uma rota for vinculada ao seu grupo, ela aparece no mapa." />
+      </Screen>
+    );
+  }
+
+  const live = Boolean(liveTrip);
+  const van = livePos ?? routes.find((item) => item.trip?.id === liveTrip?.id)?.position ?? null;
+  const markers: MapMarker[] = [
+    ...allPoints.map((p) => ({
+      id: p.id,
+      title: p.name,
+      lat: p.lat,
+      lng: p.lng,
+    })),
+    ...(van
+      ? [{ id: 'van', title: 'Van', lat: van.lat, lng: van.lng }]
+      : []),
+  ];
+  const polylines: MapPolyline[] = routes
+    .map((item) => item.line)
+    .filter((line): line is MapPolyline => Boolean(line?.coordinates?.length));
+  const mapRegion = regionRef.current ?? regionFromPoints(allPoints);
+  const names = routes.map((item) => item.route.name).join(' · ');
 
   return (
     <View style={styles.root}>
       <View style={styles.map}>
-        {mapQuery.isLoading ? <LoadingState label="Carregando mapa..." /> : null}
-        {mapQuery.isError ? (
-          <ErrorState message="Não foi possível carregar o mapa." />
-        ) : null}
-        {mapQuery.data ? (
-          <MapView
-            markers={mapQuery.data.markers}
-            polyline={mapQuery.data.polyline}
-            initialRegion={mapQuery.data.region}
-          />
-        ) : null}
+        <MapView
+          markers={markers}
+          polylines={polylines}
+          initialRegion={mapRegion}
+          showsUserLocation={false}
+        />
       </View>
-
-      <LinearGradient
-        pointerEvents="none"
-        colors={['rgba(14,42,71,0.28)', 'transparent']}
-        style={[styles.mapFade, { height: insets.top + 90 }]}
-      />
 
       <MapTopBar>
         <View style={styles.topRow}>
@@ -110,92 +123,22 @@ export default function HomeScreen() {
               <View style={styles.liveDot} />
               <Text style={styles.liveText}>Ao vivo</Text>
             </View>
-          ) : (
-            <BrandMark compact />
-          )}
+          ) : null}
         </View>
       </MapTopBar>
 
-      <View style={[styles.sheetWrap, { bottom: Math.max(insets.bottom, 10) + 70 }]}>
+      <View style={[styles.sheetWrap, { paddingBottom: 12 }]}>
         <BottomSheet floating>
-          <Text style={styles.sheetKicker}>
-            {isTransporter ? 'Operação' : 'Sua viagem'}
-          </Text>
-          {isTransporter ? (
-            <>
-              <ListRow
-                icon="navigate-outline"
-                glyph="🧭"
-                title="Minhas rotas"
-                subtitle="Pontos e início do trajeto"
-                onPress={() => router.push('/(app)/(tabs)/routes')}
-              />
-              <ListRow
-                icon="people-outline"
-                glyph="👥"
-                title="Grupos"
-                subtitle="Veículo, rota e membros"
-                onPress={() => router.push('/(app)/(tabs)/groups')}
-              />
-              <ListRow
-                icon="bus-outline"
-                glyph="🚐"
-                title="Veículos"
-                subtitle="Tipo e placa"
-                onPress={() => router.push(href('/(app)/(tabs)/profile/vehicles'))}
-              />
-              <View style={styles.cta}>
-                <Button
-                  label="Iniciar rota"
-                  onPress={() => router.push('/(app)/(tabs)/routes')}
-                />
-              </View>
-            </>
-          ) : (
-            <>
-              <ListRow
-                icon="location-outline"
-                glyph="📍"
-                title="Rota ao vivo"
-                subtitle={
-                  live
-                    ? 'Localização do transporte em tempo real'
-                    : 'Nenhuma rota em andamento agora'
-                }
-                onPress={
-                  mapQuery.data?.tripId
-                    ? () =>
-                        router.push(
-                          href(`/(app)/(tabs)/index/trip/${mapQuery.data!.tripId}`),
-                        )
-                    : undefined
-                }
-              />
-              <ListRow
-                icon="people-outline"
-                glyph="🚐"
-                title="Van vinculada"
-                subtitle="Grupo e motorista"
-                onPress={() => router.push('/(app)/(tabs)/groups')}
-              />
-              {!live ? (
-                <EmptyState
-                  title="Nenhuma rota em andamento"
-                  hint="Quando o trajeto começar, a van aparece no mapa."
-                  glyph="🚐"
-                />
-              ) : (
-                <View style={styles.cta}>
-                  <Button
-                    label="Acompanhar van"
-                    onPress={() =>
-                      router.push(href(`/(app)/(tabs)/index/trip/${mapQuery.data!.tripId}`))
-                    }
-                  />
-                </View>
-              )}
-            </>
-          )}
+          <Text style={styles.sheetKicker}>{live ? 'Acompanhe a van' : 'Suas rotas'}</Text>
+          <Text style={styles.route}>{names}</Text>
+          <View style={styles.statusRow}>
+            <View style={[styles.dot, !live && styles.dotOff]} />
+            <Text style={styles.status}>
+              {live
+                ? 'Van em rota'
+                : 'Aguardando o transportador iniciar o trajeto'}
+            </Text>
+          </View>
         </BottomSheet>
       </View>
     </View>
@@ -205,7 +148,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface },
   map: { ...StyleSheet.absoluteFill },
-  mapFade: { position: 'absolute', top: 0, left: 0, right: 0 },
+  sheetWrap: { position: 'absolute', left: 12, right: 12, bottom: TAB_SCREEN_BOTTOM - 40 },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -236,18 +179,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.live,
   },
   liveText: { fontWeight: '700', color: colors.tabInk, fontSize: 13 },
-  sheetWrap: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-  },
   sheetKicker: {
     fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    marginBottom: 12,
   },
-  cta: { marginTop: 6 },
+  route: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.ink,
+    marginTop: 6,
+    marginBottom: 16,
+    letterSpacing: -0.5,
+  },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.live,
+  },
+  dotOff: { backgroundColor: colors.textMuted },
+  status: { fontWeight: '700', color: colors.ink, flex: 1 },
 });

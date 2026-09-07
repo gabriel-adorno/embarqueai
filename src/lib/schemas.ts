@@ -46,10 +46,10 @@ export const routeSchema = z.object({
   pointA: z.string().min(2, 'Informe o primeiro ponto.'),
   pointB: z.string().min(2, 'Informe o segundo ponto.'),
   pointC: z.string().optional(),
+  group_ids: z.array(z.string()).min(1, 'Selecione pelo menos um grupo.'),
 });
 
 export const groupSchema = z.object({
   name: z.string().min(3, 'Informe o nome do grupo.'),
   vehicle_id: z.string().min(1, 'Selecione um veículo.'),
-  route_id: z.string().min(1, 'Selecione uma rota.'),
 });

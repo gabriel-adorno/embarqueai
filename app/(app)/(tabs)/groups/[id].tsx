@@ -17,7 +17,6 @@ import {
   removeGroupMember,
 } from '@/src/services/groups';
 import { getProfile } from '@/src/services/profiles';
-import { listActiveTripForGroup } from '@/src/services/trips';
 import { getVehicle } from '@/src/services/vehicles';
 import { useSessionStore } from '@/src/store/session';
 import { href } from '@/src/lib/href';
@@ -38,13 +37,12 @@ export default function GroupDetailScreen() {
     queryFn: async () => {
       const group = await getGroup(id);
       if (!group) throw new Error('Grupo não encontrado.');
-      const [vehicle, transporter, trip, members] = await Promise.all([
+      const [vehicle, transporter, members] = await Promise.all([
         getVehicle(group.vehicle_id),
         getProfile(group.transporter_id),
-        listActiveTripForGroup(group.id),
         isTransporter ? listGroupMembers(group.id) : Promise.resolve([]),
       ]);
-      return { group, members, vehicle, transporter, trip };
+      return { group, members, vehicle, transporter };
     },
   });
 
@@ -69,7 +67,7 @@ export default function GroupDetailScreen() {
         <ScreenTitle
           title={query.data?.group.name ?? 'Grupo'}
           subtitle={
-            isTransporter ? 'Veículo, motorista e membros' : 'Van e motorista do grupo'
+            isTransporter ? 'Van, motorista e alunos' : 'Van e motorista do grupo'
           }
         />
         {query.isLoading ? <LoadingState /> : null}
@@ -79,8 +77,11 @@ export default function GroupDetailScreen() {
             <ListRow
               icon="bus-outline"
               glyph="🚐"
-              title={query.data.group.name}
-              subtitle={`${query.data.vehicle?.type ?? ''} · ${query.data.vehicle?.plate ?? ''}`}
+              title={query.data.vehicle?.type ?? 'Van'}
+              subtitle={query.data.vehicle?.plate ?? ''}
+              onPress={() =>
+                router.push(href(`/(app)/(tabs)/groups/van/${query.data.group.vehicle_id}`))
+              }
             />
             <ListRow
               icon="person-outline"
@@ -92,23 +93,10 @@ export default function GroupDetailScreen() {
                   .join(' · ') || 'Motorista do grupo'
               }
             />
-            {query.data.trip ? (
-              <Button
-                label="Ver trajeto ao vivo"
-                onPress={() =>
-                  router.push(href(`/(app)/(tabs)/index/trip/${query.data.trip!.id}`))
-                }
-              />
-            ) : !isTransporter ? (
-              <EmptyState
-                title="Nenhuma rota em andamento"
-                hint="Quando o trajeto começar, você acompanha a van ao vivo."
-              />
-            ) : null}
             {isTransporter ? (
               <>
                 {query.data.members.length === 0 ? (
-                  <EmptyState title="Sem membros" hint="Adicione um cliente pelo e-mail." />
+                  <EmptyState title="Sem alunos" hint="Adicione pelo e-mail da conta do aluno." />
                 ) : null}
                 {query.data.members.map((member) => (
                   <View key={member.user_id} style={styles.block}>
@@ -129,8 +117,8 @@ export default function GroupDetailScreen() {
                 ))}
                 <View style={styles.add}>
                   <Input
-                    label="Adicionar membro por e-mail"
-                    placeholder="cliente@embarqueai.com"
+                    label="Adicionar aluno por e-mail"
+                    placeholder="aluno@email.com"
                     autoCapitalize="none"
                     keyboardType="email-address"
                     value={email}
@@ -149,7 +137,7 @@ export default function GroupDetailScreen() {
     </Screen>
       <ConfirmModal
         visible={Boolean(removeUserId)}
-        title="Certeza que deseja remover este membro?"
+        title="Certeza que deseja remover este aluno?"
         onNo={() => setRemoveUserId(null)}
         onYes={() => {
           if (removeUserId) removeMut.mutate(removeUserId);

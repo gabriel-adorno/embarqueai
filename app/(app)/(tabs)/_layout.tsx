@@ -2,12 +2,8 @@ import { Tabs } from 'expo-router';
 
 import { FloatingTabBar } from '@/src/components/ui/FloatingTabBar';
 import { colors } from '@/src/theme/colors';
-import { useRole } from '@/src/store/session';
 
 export default function TabsLayout() {
-  const role = useRole();
-  const isTransporter = role === 'transporter';
-
   return (
     <Tabs
       tabBar={(props) => <FloatingTabBar {...props} />}
@@ -27,13 +23,8 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Início' }} />
       <Tabs.Screen name="groups" options={{ title: 'Grupos' }} />
-      <Tabs.Screen
-        name="routes"
-        options={{
-          title: 'Rotas',
-          href: isTransporter ? undefined : null,
-        }}
-      />
+      <Tabs.Screen name="routes" options={{ title: 'Rotas' }} />
+      <Tabs.Screen name="vehicles" options={{ title: 'Vans' }} />
       <Tabs.Screen name="profile" options={{ title: 'Conta' }} />
     </Tabs>
   );

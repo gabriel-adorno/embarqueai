@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -11,11 +10,9 @@ import { LoadingState } from '@/src/components/ui/States';
 import { getProfile, updateProfile } from '@/src/services/profiles';
 import { colors } from '@/src/theme/colors';
 import { useSessionStore } from '@/src/store/session';
-import { href } from '@/src/lib/href';
 import { notifyKey } from '@/src/lib/notify';
 
 export default function ProfileTab() {
-  const router = useRouter();
   const qc = useQueryClient();
   const session = useSessionStore((s) => s.session);
   const signOut = useSessionStore((s) => s.signOut);
@@ -48,11 +45,7 @@ export default function ProfileTab() {
     <Screen tab>
         <ScreenTitle
           title="Conta"
-          subtitle={
-            role === 'transporter'
-              ? 'Seus dados e veículos'
-              : 'Seus dados da família'
-          }
+          subtitle={role === 'transporter' ? 'Seus dados de operação' : 'Seus dados da família'}
         />
         {query.isLoading ? <LoadingState /> : null}
         {query.data ? (
@@ -99,15 +92,6 @@ export default function ProfileTab() {
               onPress={form.handleSubmit((v) => mutation.mutate(v))}
             />
           </>
-        ) : null}
-        {role === 'transporter' ? (
-          <View style={styles.gap}>
-            <Button
-              label="Veículos"
-              variant="secondary"
-              onPress={() => router.push(href('/(app)/(tabs)/profile/vehicles'))}
-            />
-          </View>
         ) : null}
         <View style={styles.gap}>
           <Button label="Sair" variant="danger" onPress={() => void signOut()} />

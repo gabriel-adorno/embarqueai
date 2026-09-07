@@ -1,15 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Redirect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { TransporterOnly } from '@/src/components/nav/TransporterOnly';
 import { Button } from '@/src/components/ui/Button';
 import { Input } from '@/src/components/ui/Input';
 import { Screen } from '@/src/components/ui/Screen';
 import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { vehicleSchema } from '@/src/lib/schemas';
 import { createVehicle } from '@/src/services/vehicles';
+import { notifyError } from '@/src/lib/notify';
 import { colors } from '@/src/theme/colors';
 import { useSessionStore } from '@/src/store/session';
 
@@ -35,18 +37,16 @@ export default function NewVehicleScreen() {
         plate: values.plate,
       }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['vehicles', user?.id] });
+      void qc.invalidateQueries({ queryKey: ['vehicles'] });
       router.back();
     },
+    onError: (err: Error) => notifyError(err.message),
   });
 
-  if (user?.user_metadata.role !== 'transporter') {
-    return <Redirect href="/(app)/(tabs)/profile" />;
-  }
-
   return (
+    <TransporterOnly fallback="/(app)/(tabs)/vehicles">
     <Screen tab showBack>
-        <ScreenTitle title="Novo veículo" subtitle="Tipo e placa" />
+        <ScreenTitle title="Nova van" subtitle="Tipo e placa" />
         <Text style={styles.label}>Tipo</Text>
         <View style={styles.chips}>
           {TYPES.map((type) => {
@@ -87,6 +87,7 @@ export default function NewVehicleScreen() {
           onPress={form.handleSubmit((v) => mutation.mutate(v))}
         />
     </Screen>
+    </TransporterOnly>
   );
 }
 

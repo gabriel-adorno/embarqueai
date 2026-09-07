@@ -17,7 +17,7 @@ export const APP_MESSAGES = {
   },
   invalidCode: {
     title: 'Código inválido',
-    body: 'O código informado não confere. No MVP, use 123456.',
+    body: 'O código informado não confere. Confira o e-mail ou solicite outro.',
   },
   recoveryExpired: {
     title: 'Recuperação expirada',
@@ -49,11 +49,11 @@ export const APP_MESSAGES = {
   },
   groupCreated: {
     title: 'Grupo criado',
-    body: 'O grupo foi criado.',
+    body: 'Agora adicione os alunos. Depois vincule o grupo ao criar a rota.',
   },
   memberAdded: {
-    title: 'Membro adicionado',
-    body: 'O passageiro foi vinculado ao grupo.',
+    title: 'Aluno adicionado',
+    body: 'O aluno foi vinculado ao grupo.',
   },
 } as const;
 

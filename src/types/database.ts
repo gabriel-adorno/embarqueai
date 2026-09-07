@@ -39,7 +39,7 @@ export type Group = {
   id: string;
   name: string;
   vehicle_id: string;
-  route_id: string;
+  route_id: string | null;
   transporter_id: string;
 };
 
@@ -55,6 +55,7 @@ export type Trip = {
   started_at: string;
   ended_at: string | null;
   status: TripStatus;
+  polyline?: { lat: number; lng: number }[];
 };
 
 export type TripPosition = {
@@ -62,6 +63,7 @@ export type TripPosition = {
   lat: number;
   lng: number;
   recorded_at: string;
+  remaining_m?: number | null;
 };
 
 export type AuthUser = {

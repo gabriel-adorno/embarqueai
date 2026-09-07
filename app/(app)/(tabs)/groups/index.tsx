@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
@@ -28,11 +29,17 @@ export default function GroupsTab() {
       return Promise.all(
         groups.map(async (group) => ({
           ...group,
-          vehicle: await getVehicle(group.vehicle_id),
+          vehicle: await getVehicle(group.vehicle_id).catch(() => null),
         })),
       );
     },
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      void query.refetch();
+    }, [query.refetch]),
+  );
 
   return (
     <Screen tab>
@@ -40,7 +47,7 @@ export default function GroupsTab() {
           title="Grupos"
           subtitle={
             isTransporter
-              ? 'Veículo, rota e membros'
+              ? 'Van e alunos — a rota entra na hora de criar a rota'
               : 'Vans vinculadas à sua família'
           }
         />
@@ -51,7 +58,7 @@ export default function GroupsTab() {
             title="Nenhum grupo ainda"
             hint={
               isTransporter
-                ? 'Crie um grupo ligado a um veículo e uma rota.'
+                ? 'Crie um grupo, adicione os alunos e depois vincule na rota.'
                 : 'Peça ao transportador para adicionar seu e-mail.'
             }
           />
@@ -63,12 +70,17 @@ export default function GroupsTab() {
             glyph="🚐"
             title={group.name}
             subtitle={`${group.vehicle?.type ?? ''} · ${group.vehicle?.plate ?? ''}`}
-            onPress={() => router.push(href(`/(app)/(tabs)/groups/${group.id}`))}
+            onPress={() =>
+              router.push(href({ pathname: '/(app)/(tabs)/groups/[id]', params: { id: group.id } }))
+            }
           />
         ))}
         {isTransporter ? (
           <View style={styles.footer}>
-            <Button label="Criar grupo" onPress={() => router.push(href('/(app)/(tabs)/groups/new'))} />
+            <Button
+              label="Criar grupo"
+              onPress={() => router.push(href({ pathname: '/(app)/(tabs)/groups/new' }))}
+            />
           </View>
         ) : null}
     </Screen>

@@ -19,13 +19,38 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   session: null,
   hydrated: false,
   hydrate: async () => {
-    await loadDb();
+    const { isRemote } = await import('@/src/lib/config');
+    if (!isRemote()) {
+      await loadDb();
+    }
     const raw = await AsyncStorage.getItem(SESSION_KEY);
-    if (raw) {
-      set({ session: JSON.parse(raw) as AuthSession, hydrated: true });
+    if (!raw) {
+      set({ hydrated: true });
       return;
     }
-    set({ hydrated: true });
+    let session = JSON.parse(raw) as AuthSession;
+    set({ session, hydrated: true });
+    if (isRemote()) {
+      try {
+        const { getMyProfile } = await import('@/src/services/remote');
+        const me = await getMyProfile();
+        if (me?.role) {
+          session = {
+            ...session,
+            user: {
+              ...session.user,
+              user_metadata: {
+                name: me.name || session.user.user_metadata.name,
+                role: me.role,
+              },
+            },
+          };
+          await get().setSession(session);
+        }
+      } catch {
+        /* keep stored session */
+      }
+    }
   },
   setSession: async (session) => {
     if (session) {

@@ -5,6 +5,8 @@
 import { EMAIL_ALIASES, MOCK_OTP } from '@/src/lib/ids';
 import { APP_MESSAGES } from '@/src/lib/messages';
 import { uuid } from '@/src/lib/uuid';
+import { isRemote } from '@/src/lib/config';
+import * as remote from '@/src/services/remote';
 import { loadDb, mutateDb } from '@/src/services/store';
 import type { AuthSession, AuthUser, Role } from '@/src/types/database';
 
@@ -46,6 +48,7 @@ export async function signUp({
   password: string;
   options: { data: { name: string; role: Role; phone?: string } };
 }): Promise<AuthResponse> {
+  if (isRemote()) return remote.signUp({ email, password, options });
   const normalized = normalizeEmail(email);
   const db = await loadDb();
   const exists = db.credentials.some((c) => c.email.toLowerCase() === normalized);
@@ -92,6 +95,7 @@ export async function signInWithPassword({
   email: string;
   password: string;
 }): Promise<AuthResponse> {
+  if (isRemote()) return remote.signInWithPassword({ email, password });
   const db = await loadDb();
   const normalized = normalizeEmail(email);
   const cred = db.credentials.find((c) => c.email.toLowerCase() === normalized);
@@ -119,6 +123,7 @@ export async function signInWithPassword({
 }
 
 export async function signOut(): Promise<{ error: AuthError }> {
+  if (isRemote()) return remote.signOut();
   return { error: null };
 }
 
@@ -126,6 +131,7 @@ export async function resetPasswordForEmail(email: string): Promise<{
   data: Record<string, never>;
   error: AuthError;
 }> {
+  if (isRemote()) return remote.resetPasswordForEmail(email);
   const db = await loadDb();
   const normalized = normalizeEmail(email);
   const exists = db.credentials.some((c) => c.email.toLowerCase() === normalized);
@@ -154,6 +160,7 @@ export async function verifyOtp({
   type: 'recovery';
 }): Promise<AuthResponse> {
   void type;
+  if (isRemote()) return remote.verifyOtp({ email, token, type });
   const db = await loadDb();
   const normalized = normalizeEmail(email);
   if (db.pending_otp_email !== normalized) {
@@ -194,6 +201,7 @@ export async function updateUser({
 }: {
   password: string;
 }): Promise<{ data: { user: AuthUser | null }; error: AuthError }> {
+  if (isRemote()) return remote.updateUser({ password });
   const db = await loadDb();
   const email = db.pending_otp_email;
   if (!email) {

@@ -8,7 +8,7 @@ import { BackButton } from '@/src/components/ui/BackButton';
 import { BottomSheet } from '@/src/components/ui/BottomSheet';
 import { ErrorState, LoadingState } from '@/src/components/ui/States';
 import { MapTopBar } from '@/src/components/ui/MapTopBar';
-import { buildRoutePolyline, regionFromPoints } from '@/src/services/maps';
+import { buildRoutePolyline, formatRemainingKm, getRoutePolyline, regionFromPoints } from '@/src/services/maps';
 import { getRoute, listRoutePoints } from '@/src/services/routes';
 import {
   getLatestTripPosition,
@@ -34,7 +34,8 @@ export default function TripScreen() {
         listRoutePoints(trip.route_id),
         getLatestTripPosition(trip.id),
       ]);
-      return { trip, route, points, position };
+      const line = await getRoutePolyline(points);
+      return { trip, route, points, position, line };
     },
   });
 
@@ -68,7 +69,7 @@ export default function TripScreen() {
                 ? [{ id: 'van', title: 'Van', lat: position.lat, lng: position.lng }]
                 : []),
             ]}
-            polyline={buildRoutePolyline(query.data.points)}
+            polyline={query.data.line ?? buildRoutePolyline(query.data.points)}
             initialRegion={regionFromPoints(query.data.points)}
           />
         ) : null}
@@ -91,7 +92,7 @@ export default function TripScreen() {
               <View style={styles.stat}>
                 <Text style={styles.statLabel}>Distância restante</Text>
                 <Text style={styles.statValue}>
-                  {inProgress ? '5,5 km' : '0 km'}
+                  {formatRemainingKm(position?.remaining_m, inProgress)}
                 </Text>
               </View>
               <View style={styles.stat}>

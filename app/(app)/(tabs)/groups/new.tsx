@@ -1,9 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Redirect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { TransporterOnly } from '@/src/components/nav/TransporterOnly';
 import { Button } from '@/src/components/ui/Button';
 import { Input } from '@/src/components/ui/Input';
 import { Screen } from '@/src/components/ui/Screen';
@@ -11,13 +12,12 @@ import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { EmptyState, LoadingState } from '@/src/components/ui/States';
 import { groupSchema } from '@/src/lib/schemas';
 import { createGroup } from '@/src/services/groups';
-import { listRoutes } from '@/src/services/routes';
 import { listVehicles } from '@/src/services/vehicles';
 import { colors } from '@/src/theme/colors';
 import { useSessionStore } from '@/src/store/session';
 import { notifyError, notifyKey } from '@/src/lib/notify';
 
-type Form = { name: string; vehicle_id: string; route_id: string };
+type Form = { name: string; vehicle_id: string };
 
 export default function NewGroupScreen() {
   const router = useRouter();
@@ -30,20 +30,19 @@ export default function NewGroupScreen() {
     enabled: Boolean(user) && isTransporter,
     queryFn: () => listVehicles(user!.id),
   });
-  const routes = useQuery({
-    queryKey: ['routes', user?.id],
-    enabled: Boolean(user) && isTransporter,
-    queryFn: () => listRoutes(user!.id),
-  });
 
   const form = useForm<Form>({
     resolver: zodResolver(groupSchema),
-    defaultValues: { name: '', vehicle_id: '', route_id: '' },
+    defaultValues: { name: '', vehicle_id: '' },
   });
 
   const mutation = useMutation({
     mutationFn: (values: Form) =>
-      createGroup({ ...values, transporter_id: user!.id }),
+      createGroup({
+        name: values.name,
+        vehicle_id: values.vehicle_id,
+        transporter_id: user!.id,
+      }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['groups'] });
       notifyKey('groupCreated');
@@ -52,14 +51,14 @@ export default function NewGroupScreen() {
     onError: (err: Error) => notifyError(err.message),
   });
 
-  if (!isTransporter) {
-    return <Redirect href="/(app)/(tabs)/groups" />;
-  }
-
   return (
+    <TransporterOnly fallback="/(app)/(tabs)/groups">
     <Screen tab showBack>
-        <ScreenTitle title="Novo grupo" subtitle="Nome, veículo e rota" />
-        {vehicles.isLoading || routes.isLoading ? <LoadingState /> : null}
+        <ScreenTitle
+          title="Novo grupo"
+          subtitle="Depois adicione os alunos. A rota é escolhida ao criar a rota."
+        />
+        {vehicles.isLoading ? <LoadingState /> : null}
         {!vehicles.data?.length ? (
           <EmptyState title="Cadastre um veículo primeiro" />
         ) : null}
@@ -95,24 +94,6 @@ export default function NewGroupScreen() {
         {form.formState.errors.vehicle_id ? (
           <Text style={styles.error}>{form.formState.errors.vehicle_id.message}</Text>
         ) : null}
-        <Text style={styles.label}>Rota</Text>
-        {routes.data?.map((route) => {
-          const selected = form.watch('route_id') === route.id;
-          return (
-            <Pressable
-              key={route.id}
-              onPress={() => form.setValue('route_id', route.id)}
-              style={[styles.option, selected && styles.optionOn]}
-            >
-              <Text style={[styles.optionText, selected && styles.optionTextOn]}>
-                {route.name}
-              </Text>
-            </Pressable>
-          );
-        })}
-        {form.formState.errors.route_id ? (
-          <Text style={styles.error}>{form.formState.errors.route_id.message}</Text>
-        ) : null}
         <View style={{ height: 16 }} />
         <Button
           label="Confirmar"
@@ -120,6 +101,7 @@ export default function NewGroupScreen() {
           onPress={form.handleSubmit((v) => mutation.mutate(v))}
         />
     </Screen>
+    </TransporterOnly>
   );
 }
 

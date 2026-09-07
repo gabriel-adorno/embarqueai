@@ -5,6 +5,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { DEMO_ROUTE_NAME, DEMO_ROUTE_STOPS } from '@/src/lib/demoRoute';
 import { DEMO_ACCOUNTS, EMAIL_ALIASES, MOCK_PASSWORD, SEED } from '@/src/lib/ids';
 import type {
   Group,
@@ -17,7 +18,7 @@ import type {
   Vehicle,
 } from '@/src/types/database';
 
-const STORAGE_KEY = '@embarqueai/mock-db-v2';
+const STORAGE_KEY = '@embarqueai/mock-db-v3';
 const LEGACY_KEYS = ['@embarqueai/mock-db-v1', '@vango/mock-db-v1'];
 
 export type Credential = {
@@ -38,8 +39,6 @@ export type MockDb = {
   credentials: Credential[];
   pending_otp_email: string | null;
 };
-
-const GOIANIA = { lat: -16.6869, lng: -49.2648 };
 
 function seedDb(): MockDb {
   return {
@@ -83,36 +82,18 @@ function seedDb(): MockDb {
       {
         id: SEED.routeId,
         transporter_id: SEED.transporterId,
-        name: 'Rota Manhã — Centro',
+        name: DEMO_ROUTE_NAME,
         status: 'draft',
       },
     ],
-    route_points: [
-      {
-        id: SEED.pointA,
-        route_id: SEED.routeId,
-        name: 'Ponto Escola',
-        lat: GOIANIA.lat,
-        lng: GOIANIA.lng,
-        sort_order: 0,
-      },
-      {
-        id: SEED.pointB,
-        route_id: SEED.routeId,
-        name: 'Ponto Jardim América',
-        lat: GOIANIA.lat + 0.012,
-        lng: GOIANIA.lng + 0.01,
-        sort_order: 1,
-      },
-      {
-        id: SEED.pointC,
-        route_id: SEED.routeId,
-        name: 'Ponto Setor Bueno',
-        lat: GOIANIA.lat + 0.02,
-        lng: GOIANIA.lng - 0.008,
-        sort_order: 2,
-      },
-    ],
+    route_points: DEMO_ROUTE_STOPS.map((stop, index) => ({
+      id: [SEED.pointA, SEED.pointB, SEED.pointC][index],
+      route_id: SEED.routeId,
+      name: stop.name,
+      lat: stop.lat,
+      lng: stop.lng,
+      sort_order: index,
+    })),
     groups: [
       {
         id: SEED.groupId,
