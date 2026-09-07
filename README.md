@@ -2,7 +2,7 @@
 
 App mobile de **transporte escolar / van**: a família acompanha a van no mapa; o transportador organiza rotas, veículos e grupos.
 
-Idioma **pt-BR**. Expo SDK 57. Sem `EXPO_PUBLIC_API_URL` o app usa **mock local**. Com a URL do Worker, Auth/dados vão para **Supabase** via **Cloudflare Worker**, e o mapa usa **Google Maps**.
+Idioma **pt-BR**. Expo SDK 57. O app já usa o **Cloudflare Worker** de produção (`embarqueai-api`) por padrão. Auth/dados vão para **Supabase** via Worker; o mapa usa **Google Maps**. Mock local: `EXPO_PUBLIC_API_URL=mock` no `.env.local`.
 
 <p>
   <img alt="Expo" src="https://img.shields.io/badge/Expo-SDK%2057-000020?logo=expo" />
@@ -23,9 +23,9 @@ Idioma **pt-BR**. Expo SDK 57. Sem `EXPO_PUBLIC_API_URL` o app usa **mock local*
 **Mock:** recuperação de senha usa o código `123456`.  
 **Backend real:** o código chega no e-mail do Supabase Auth.
 
-## Como rodar (mock, do zero)
+## Como rodar (do zero)
 
-Node.js 20+ e Expo Go (ou simulador). Sem `.env` o mock basta.
+Node.js 20+ e Expo Go (ou simulador). Sem `.env` o app já fala com o Worker em produção.
 
 ```bash
 git clone https://github.com/gabriel-adorno/embarqueai.git
@@ -107,14 +107,18 @@ npx expo run:android
 
 ### 4. App apontando para o Worker
 
-Copie `.env.example` para `.env.local`. Produção:
+Sem `.env` o app já usa:
+
+`https://embarqueai-api.gabrielviniciusadorno.workers.dev`
+
+Opcional no `.env.local`:
 
 ```
 EXPO_PUBLIC_API_URL=https://embarqueai-api.gabrielviniciusadorno.workers.dev
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
 ```
 
-Worker local: `EXPO_PUBLIC_API_URL=http://localhost:8787` (emulador Android `http://10.0.2.2:8787`; celular físico, IP da LAN e `wrangler dev --ip 0.0.0.0`). Reinicie o Expo depois de mudar a URL.
+Worker local: `EXPO_PUBLIC_API_URL=http://localhost:8787` (emulador Android `http://10.0.2.2:8787`; celular físico, IP da LAN e `wrangler dev --ip 0.0.0.0`). Mock: `EXPO_PUBLIC_API_URL=mock`. Reinicie o Expo depois de mudar a URL.
 
 ## Credenciais para enviar (checklist)
 

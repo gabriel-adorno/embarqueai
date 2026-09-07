@@ -1,7 +1,9 @@
 import type { ExpoConfig } from 'expo/config';
 
 const googleKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
-const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? '';
+const apiUrl =
+  process.env.EXPO_PUBLIC_API_URL ??
+  'https://embarqueai-api.gabrielviniciusadorno.workers.dev';
 
 const mapsPlugin = googleKey
   ? ([
