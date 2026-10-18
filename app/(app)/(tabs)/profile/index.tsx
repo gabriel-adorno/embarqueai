@@ -1,0 +1,181 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { Button } from '@/src/components/ui/Button';
+import { Input } from '@/src/components/ui/Input';
+import { Screen } from '@/src/components/ui/Screen';
+import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
+import { LoadingState } from '@/src/components/ui/States';
+import { getProfile, updateProfile } from '@/src/services/profiles';
+import { colors } from '@/src/theme/colors';
+import { useSessionStore } from '@/src/store/session';
+import { notifyError, notifyKey } from '@/src/lib/notify';
+import { changePassword } from '@/src/services/auth';
+
+export default function ProfileTab() {
+  const qc = useQueryClient();
+  const session = useSessionStore((s) => s.session);
+  const signOut = useSessionStore((s) => s.signOut);
+  const role = session?.user.user_metadata.role;
+  const userId = session?.user.id;
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+
+  const query = useQuery({
+    queryKey: ['profile', userId],
+    enabled: Boolean(userId),
+    queryFn: () => getProfile(userId!),
+  });
+
+  const form = useForm({
+    values: {
+      name: query.data?.name ?? '',
+      phone: query.data?.phone ?? '',
+    },
+  });
+
+  const passwordMut = useMutation({
+    mutationFn: () => {
+      if (password.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres.');
+      if (password !== confirm) throw new Error('As senhas não coincidem.');
+      return changePassword(userId!, password);
+    },
+    onSuccess: () => {
+      setPassword('');
+      setConfirm('');
+      notifyKey('passwordChanged');
+    },
+    onError: (err: Error) => notifyError(err.message),
+  });
+
+  const mutation = useMutation({
+    mutationFn: (values: { name: string; phone: string }) =>
+      updateProfile(userId!, { name: values.name, phone: values.phone }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['profile', userId] });
+      notifyKey('profileUpdated');
+    },
+  });
+
+  return (
+    <Screen tab>
+        <ScreenTitle
+          title="Conta"
+          subtitle={
+            role === 'transporter'
+              ? 'Seus dados de operação'
+              : 'Seus dados. Para acompanhar alguém, abra Pessoas.'
+          }
+        />
+        {query.isLoading ? <LoadingState /> : null}
+        {query.data ? (
+          <>
+            <View style={styles.avatar}>
+              <Text style={styles.initials}>
+                {query.data.name
+                  .split(' ')
+                  .slice(0, 2)
+                  .map((n) => n[0])
+                  .join('')
+                  .toUpperCase()}
+              </Text>
+            </View>
+            <Text style={styles.email}>{query.data.email}</Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {role === 'transporter' ? 'Transportador' : 'Cliente'}
+              </Text>
+            </View>
+            <Controller
+              control={form.control}
+              name="name"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Nome"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                />
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="phone"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Telefone"
+                  keyboardType="phone-pad"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                />
+              )}
+            />
+            <Button
+              label="Salvar"
+              loading={mutation.isPending}
+              onPress={form.handleSubmit((v) => mutation.mutate(v))}
+            />
+            <Input
+              label="Nova senha"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
+            <Input
+              label="Confirmar senha"
+              secureTextEntry
+              value={confirm}
+              onChangeText={setConfirm}
+            />
+            <Button
+              label="Alterar senha"
+              variant="secondary"
+              loading={passwordMut.isPending}
+              onPress={() => passwordMut.mutate()}
+            />
+          </>
+        ) : null}
+        <View style={styles.gap}>
+          <Button label="Sair" variant="danger" onPress={() => void signOut()} />
+        </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  avatar: {
+    alignSelf: 'center',
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.primary,
+    borderWidth: 3,
+    borderColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  initials: { color: colors.white, fontSize: 28, fontWeight: '800' },
+  email: {
+    textAlign: 'center',
+    color: colors.textMuted,
+    marginBottom: 10,
+  },
+  badge: {
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 20,
+  },
+  badgeText: {
+    color: colors.primaryDark,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  gap: { marginTop: 12 },
+});
