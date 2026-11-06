@@ -10,6 +10,7 @@ import { Input } from '@/src/components/ui/Input';
 import { Screen } from '@/src/components/ui/Screen';
 import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { EmptyState, LoadingState } from '@/src/components/ui/States';
+import { href } from '@/src/lib/href';
 import { groupSchema } from '@/src/lib/schemas';
 import { createGroup } from '@/src/services/groups';
 import { listVehicles } from '@/src/services/vehicles';
@@ -43,10 +44,10 @@ export default function NewGroupScreen() {
         vehicle_id: values.vehicle_id,
         transporter_id: user!.id,
       }),
-    onSuccess: () => {
+    onSuccess: (group) => {
       void qc.invalidateQueries({ queryKey: ['groups'] });
       notifyKey('groupCreated');
-      router.back();
+      router.replace(href({ pathname: '/(app)/(tabs)/groups/[id]', params: { id: group.id } }));
     },
     onError: (err: Error) => notifyError(err.message),
   });
