@@ -21,7 +21,7 @@ export function GradientHeader({ children, style, ...rest }: Props) {
       {...rest}
     >
       <StatusBar style="light" />
-      <View style={styles.glow} pointerEvents="none" />
+      <View style={styles.glow} />
       {children}
     </LinearGradient>
   );
@@ -34,6 +34,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   glow: {
+    pointerEvents: 'none',
     position: 'absolute',
     right: -40,
     top: -30,

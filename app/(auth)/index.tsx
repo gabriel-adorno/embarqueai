@@ -73,11 +73,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(18, 21, 26, 0.08)',
-    shadowColor: '#0B1220',
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+    boxShadow: '0px 8px 16px rgba(11, 18, 32, 0.08)',
   },
   pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
   iconWrap: {

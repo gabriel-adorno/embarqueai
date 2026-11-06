@@ -28,11 +28,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(18, 21, 26, 0.08)',
     borderBottomWidth: 0,
-    shadowColor: '#0B1220',
-    shadowOpacity: 0.16,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: -10 },
-    elevation: 16,
+    boxShadow: '0px -10px 28px rgba(11, 18, 32, 0.16)',
   },
   floating: {
     borderRadius: 32,

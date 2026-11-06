@@ -32,9 +32,8 @@ export function FloatingTabBar({ state, descriptors, navigation, insets }: Botto
   });
 
   return (
-    <View pointerEvents="box-none" style={styles.dock}>
+    <View style={styles.dock}>
       <View
-        pointerEvents="auto"
         style={[
           styles.pill,
           { marginBottom: Math.max(insets.bottom, floatingTabBar.extraBottom) },
@@ -90,6 +89,7 @@ export function FloatingTabBar({ state, descriptors, navigation, insets }: Botto
 
 const styles = StyleSheet.create({
   dock: {
+    pointerEvents: 'box-none',
     position: 'absolute',
     left: 0,
     right: 0,
@@ -97,6 +97,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   pill: {
+    pointerEvents: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'stretch',
@@ -108,11 +109,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.78)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(18, 21, 26, 0.08)',
-    shadowColor: '#0B1220',
-    shadowOpacity: 0.16,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
+    boxShadow: '0px 10px 20px rgba(11, 18, 32, 0.16)',
   },
   item: {
     flex: 1,
