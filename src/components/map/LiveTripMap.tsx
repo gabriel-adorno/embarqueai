@@ -1,4 +1,5 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -6,6 +7,7 @@ import { MapView } from '@/src/components/map/MapView';
 import { TripPassengers } from '@/src/components/trip/TripPassengers';
 import { BottomSheet } from '@/src/components/ui/BottomSheet';
 import { Button } from '@/src/components/ui/Button';
+import { ConfirmModal } from '@/src/components/ui/ConfirmModal';
 import { Input } from '@/src/components/ui/Input';
 import { formatEta } from '@/src/lib/eta';
 import { deviceNotice } from '@/src/lib/deviceNotice';
@@ -20,10 +22,11 @@ import {
   getRoutePolyline,
   regionFromPoints,
 } from '@/src/services/maps';
-import { getRoute, listRoutePoints } from '@/src/services/routes';
+import { getRoute, listRoutePoints, updateRouteStatus } from '@/src/services/routes';
 import {
   getLatestTripPosition,
   listActiveTripForRoute,
+  stopTrip,
   subscribeTripPosition,
 } from '@/src/services/trips';
 import { colors } from '@/src/theme/colors';
@@ -39,6 +42,9 @@ export function LiveTripMap({ routeId, header }: Props) {
   const [live, setLive] = useState<TripPosition | null>(null);
   const [notice, setNotice] = useState('');
   const [sending, setSending] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const router = useRouter();
+  const qc = useQueryClient();
   const isTransporter =
     useSessionStore((s) => s.session?.user.user_metadata.role) === 'transporter';
 
@@ -64,6 +70,19 @@ export function LiveTripMap({ routeId, header }: Props) {
 
   const tripId = query.data?.trip?.id;
   const inProgress = query.data?.trip?.status === 'in_progress';
+
+  const endTrip = useMutation({
+    mutationFn: async () => {
+      if (!tripId) throw new Error('Nenhum trajeto ativo.');
+      await stopTrip(tripId);
+      await updateRouteStatus(routeId, 'stopped');
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries();
+      router.back();
+    },
+    onError: (err: Error) => notifyError(err.message),
+  });
 
   useEffect(() => {
     if (!tripId || !inProgress) return;
@@ -177,10 +196,27 @@ export function LiveTripMap({ routeId, header }: Props) {
                     .finally(() => setSending(false));
                 }}
               />
+              <View style={styles.end}>
+                <Button
+                  label="Encerrar trajeto"
+                  variant="danger"
+                  loading={endTrip.isPending}
+                  onPress={() => setConfirmEnd(true)}
+                />
+              </View>
             </View>
           ) : null}
         </BottomSheet>
       </View>
+      <ConfirmModal
+        visible={confirmEnd}
+        title="Certeza que deseja parar o trajeto?"
+        onNo={() => setConfirmEnd(false)}
+        onYes={() => {
+          setConfirmEnd(false);
+          endTrip.mutate();
+        }}
+      />
     </View>
   );
 }
@@ -228,4 +264,5 @@ const styles = StyleSheet.create({
   },
   status: { fontWeight: '700', color: colors.ink, flex: 1 },
   notice: { marginTop: 12 },
+  end: { marginTop: 8 },
 });
