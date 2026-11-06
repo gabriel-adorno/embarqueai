@@ -8,7 +8,7 @@
     "seed": "npx tsx scripts/seed.ts"
   },
   "dependencies": {
-    "hono": "^4.9.8"
+    "hono": "^4.13.16"
   },
   "devDependencies": {
     "tsx": "^4.20.5",
