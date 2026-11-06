@@ -9,6 +9,7 @@ import { Button } from '@/src/components/ui/Button';
 import { Input } from '@/src/components/ui/Input';
 import { Screen } from '@/src/components/ui/Screen';
 import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
+import { href } from '@/src/lib/href';
 import { DEMO_ACCOUNTS } from '@/src/lib/ids';
 import { flashFromAuthError, flashFromCatalog } from '@/src/lib/notify';
 import { loginSchema } from '@/src/lib/schemas';
@@ -52,7 +53,7 @@ export default function LoginScreen() {
       return;
     }
     await setSession(data.session);
-    router.replace('/(app)/(tabs)');
+    router.replace(href('/(app)/(tabs)'));
   });
 
   return (

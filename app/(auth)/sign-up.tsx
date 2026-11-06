@@ -70,7 +70,7 @@ export default function SignUpScreen() {
     }
     await setSession(data.session);
     notifyKey('accountCreated');
-    router.replace('/(app)/(tabs)');
+    router.replace(href('/(app)/(tabs)'));
   });
 
   return (
