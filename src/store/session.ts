@@ -61,6 +61,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({ session });
   },
   signOut: async () => {
+    const { unregisterPushToken } = await import('@/src/lib/push');
+    await unregisterPushToken();
     await authService.signOut();
     await get().setSession(null);
   },

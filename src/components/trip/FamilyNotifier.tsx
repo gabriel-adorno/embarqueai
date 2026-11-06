@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { formatEta } from '@/src/lib/eta';
 import { deviceNotice } from '@/src/lib/deviceNotice';
+import { registerPushToken } from '@/src/lib/push';
 import { listBoardings, listAlerts, listActiveTripForRoute } from '@/src/services/trips';
 import { getLatestTripPosition } from '@/src/services/trips';
 import { listFollows } from '@/src/services/follows';
@@ -12,11 +13,28 @@ import { useSessionStore } from '@/src/store/session';
 
 const SEEN_KEY = '@embarqueai/seen-notices';
 
-/** Avisa chegada, embarque e atraso mesmo fora da tela do mapa. */
+/**
+ * Avisa chegada, embarque e atraso.
+ * Com push ativo (celular + Worker), o servidor envia os avisos mesmo com o
+ * app fechado e esta checagem local fica desligada para não duplicar.
+ * Sem push (web, modo mock, sem permissão), segue consultando a cada 20 s.
+ */
 export function FamilyNotifier() {
   const user = useSessionStore((s) => s.session?.user);
-  const enabled = user?.user_metadata.role === 'client';
+  const [push, setPush] = useState(false);
+  const enabled = user?.user_metadata.role === 'client' && !push;
   const seen = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    void registerPushToken().then((ok) => {
+      if (active) setPush(ok);
+    });
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
 
   const query = useQuery({
     queryKey: ['family-notices', user?.id],
@@ -57,7 +75,7 @@ export function FamilyNotifier() {
   }, []);
 
   useEffect(() => {
-    if (!query.data || !user) return;
+    if (!enabled || !query.data || !user) return;
     const fresh: { key: string; title: string; body: string }[] = [];
     for (const item of query.data.live) {
       const etaKey = `eta:${item.trip.id}`;
@@ -101,7 +119,7 @@ export function FamilyNotifier() {
     for (const item of fresh) seen.current.add(item.key);
     void AsyncStorage.setItem(SEEN_KEY, JSON.stringify([...seen.current].slice(-80)));
     for (const item of fresh) void deviceNotice(item.title, item.body);
-  }, [query.data, user]);
+  }, [enabled, query.data, user]);
 
   return null;
 }

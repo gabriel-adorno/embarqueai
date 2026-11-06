@@ -5,6 +5,14 @@ import { HTTPException } from 'hono/http-exception';
 import { interpolatePath, remainingAlong, type LatLng } from './geo';
 import { directions, geocodeAddress } from './maps';
 import {
+  background,
+  guardiansOf,
+  presentMembers,
+  removeToken,
+  saveToken,
+  sendPush,
+} from './push';
+import {
   adminToken,
   authFetch,
   getAuthUser,
@@ -64,7 +72,10 @@ type Trip = {
   status: 'in_progress' | 'ended';
   leg?: 'outbound' | 'return' | null;
   polyline: LatLng[];
+  arrival_notified_at?: string | null;
 };
+
+const ARRIVAL_M = 800;
 
 type PositionRow = {
   trip_id: string;
@@ -367,6 +378,22 @@ gated.get('/profile/:id', async (c) => {
     `?id=eq.${c.req.param('id')}&select=*`,
   );
   return c.json(rows[0] ?? null);
+});
+
+gated.post('/push/token', async (c) => {
+  const body = await c.req.json<{ token?: string; platform?: string }>();
+  const token = body.token?.trim() ?? '';
+  if (!/^Expo(nent)?PushToken\[.+\]$/.test(token)) {
+    throw new HTTPException(400, { message: 'Token de notificação inválido.' });
+  }
+  await saveToken(c.env, c.get('profile').id, token, body.platform ?? null);
+  return c.json({ ok: true });
+});
+
+gated.delete('/push/token', async (c) => {
+  const body = await c.req.json<{ token?: string }>();
+  if (body.token) await removeToken(c.env, c.get('profile').id, body.token);
+  return c.json({ ok: true });
 });
 
 gated.get('/vehicles', async (c) => {
@@ -962,6 +989,26 @@ gated.post('/trips/:id/boardings', async (c) => {
       recorded_at: new Date().toISOString(),
     }),
   });
+  background(c.executionCtx, async () => {
+    const [routes, people] = await Promise.all([
+      rest<{ name: string }[]>(c.env, adminToken(c.env), 'routes', `?id=eq.${trip.route_id}&select=name`),
+      rest<{ name: string }[]>(c.env, adminToken(c.env), 'profiles', `?id=eq.${body.user_id}&select=name`),
+    ]);
+    const routeName = routes?.[0]?.name ?? 'Rota';
+    const name = people?.[0]?.name ?? 'Passageiro';
+    const boarded = body.status === 'boarded';
+    const data = { kind: 'boarding', tripId: trip.id, routeId: trip.route_id };
+    await sendPush(c.env, [body.user_id], {
+      title: boarded ? 'Embarque registrado' : 'Desembarque registrado',
+      body: routeName,
+      data,
+    });
+    await sendPush(c.env, await guardiansOf(c.env, [body.user_id]), {
+      title: boarded ? `${name} embarcou` : `${name} desembarcou`,
+      body: routeName,
+      data,
+    });
+  });
   return c.json(rows?.[0] ?? { ok: true });
 });
 
@@ -984,6 +1031,7 @@ gated.post('/trips/:id/position', async (c) => {
   const targets = siblings.length ? siblings : [trip];
   const recorded_at = new Date().toISOString();
   let current: PositionRow | null = null;
+  const arriving: { trip: Trip; remaining: number }[] = [];
   for (const item of targets) {
     const poly: LatLng[] = Array.isArray(item.polyline) ? item.polyline : [];
     const row = await insertPosition(c.env, c.get('token'), {
@@ -995,6 +1043,38 @@ gated.post('/trips/:id/position', async (c) => {
       source: 'gps',
     });
     if (item.id === trip.id) current = row;
+    if (row?.remaining_m != null && row.remaining_m < ARRIVAL_M && !item.arrival_notified_at) {
+      arriving.push({ trip: item, remaining: row.remaining_m });
+    }
+  }
+  if (arriving.length) {
+    background(c.executionCtx, async () => {
+      for (const { trip: item, remaining } of arriving) {
+        // Marca antes de enviar; só quem conseguir marcar envia (evita repetir).
+        const marked = await rest<Trip[]>(
+          c.env,
+          adminToken(c.env),
+          'trips',
+          `?id=eq.${item.id}&arrival_notified_at=is.null`,
+          { method: 'PATCH', body: JSON.stringify({ arrival_notified_at: new Date().toISOString() }) },
+        );
+        if (!marked?.length) continue;
+        const routes = await rest<{ name: string }[]>(
+          c.env,
+          adminToken(c.env),
+          'routes',
+          `?id=eq.${item.route_id}&select=name`,
+        );
+        const members = await presentMembers(c.env, item.group_id);
+        const guardians = await guardiansOf(c.env, members);
+        const meters = Math.max(100, Math.round(remaining / 100) * 100);
+        await sendPush(c.env, [...members, ...guardians], {
+          title: 'A van está chegando',
+          body: `${routes?.[0]?.name ?? 'Rota'}: faltam cerca de ${meters} m`,
+          data: { kind: 'arrival', tripId: item.id, routeId: item.route_id },
+        });
+      }
+    });
   }
   return c.json(current);
 });
@@ -1068,6 +1148,15 @@ gated.post('/trips/:id/alerts', async (c) => {
     '',
     { method: 'POST', body: JSON.stringify({ trip_id: trip.id, message }) },
   );
+  background(c.executionCtx, async () => {
+    const members = await presentMembers(c.env, trip.group_id);
+    const guardians = await guardiansOf(c.env, members);
+    await sendPush(c.env, [...members, ...guardians], {
+      title: 'Aviso do transportador',
+      body: message,
+      data: { kind: 'alert', tripId: trip.id, routeId: trip.route_id },
+    });
+  });
   return c.json(rows?.[0] ?? { ok: true });
 });
 
