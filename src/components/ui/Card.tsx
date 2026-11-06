@@ -13,10 +13,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     padding: 18,
-    shadowColor: colors.primaryDark,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    boxShadow: '0px 4px 12px rgba(22, 58, 107, 0.06)',
   },
 });

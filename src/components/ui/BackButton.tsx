@@ -33,16 +33,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(18, 21, 26, 0.08)',
-    shadowColor: '#0B1220',
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    boxShadow: '0px 6px 12px rgba(11, 18, 32, 0.1)',
   },
   light: {
     backgroundColor: 'rgba(18, 21, 26, 0.42)',
     borderColor: 'rgba(255,255,255,0.2)',
-    shadowOpacity: 0,
-    elevation: 0,
+    boxShadow: 'none',
   },
 });

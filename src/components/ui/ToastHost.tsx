@@ -17,7 +17,7 @@ export function ToastHost() {
   if (!flash) return null;
 
   return (
-    <View pointerEvents="none" style={styles.host}>
+    <View style={styles.host}>
       <AppMessage flush title={flash.title} body={flash.body} kind={flash.kind} />
     </View>
   );
@@ -25,6 +25,7 @@ export function ToastHost() {
 
 const styles = StyleSheet.create({
   host: {
+    pointerEvents: 'none',
     position: 'absolute',
     left: 16,
     right: 16,

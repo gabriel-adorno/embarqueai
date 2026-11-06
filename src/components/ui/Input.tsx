@@ -71,10 +71,7 @@ const styles = StyleSheet.create({
   },
   focus: {
     borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
+    boxShadow: '0px 3px 8px rgba(43, 108, 176, 0.12)',
   },
   error: {
     borderColor: colors.error,
