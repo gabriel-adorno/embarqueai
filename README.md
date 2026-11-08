@@ -14,11 +14,13 @@ Idioma **pt-BR**. Expo SDK 57. O app já usa o **Cloudflare Worker** de produç�
 
 | Cliente | Transportador |
 | --- | --- |
-| Entra com o papel de família | Entra com o papel de operação |
+| Escolhe "Passageiro ou responsável" no cadastro | Escolhe "Transportador" no cadastro |
 | Vê a van no mapa quando a rota está ao vivo | Cadastra veículo (tipo e placa) |
 | Acompanha o grupo / van vinculada | Cria rota com pontos (lat/lng) |
 | | Monta grupo (van + rota + membros por e-mail) |
 | | Inicia e encerra o trajeto |
+
+O login é um só para os dois perfis: o app lê o tipo gravado na conta e abre as abas certas.
 
 **Mock:** recuperação de senha usa o código `123456`.  
 **Backend real:** o código chega no e-mail do Supabase Auth.
@@ -42,6 +44,8 @@ O mapa nativo só no celular/simulador. Web é fallback.
 | --- | --- | --- |
 | Cliente | `cliente@embarqueai.com` | `senha123` |
 | Transportador | `transportador@embarqueai.com` | `senha123` |
+
+Na tela de login, os botões **Conta de teste: Passageiro / Transportador** preenchem esses dados.
 
 Fluxo no transportador: **veículo → grupo (com os passageiros) → rota → iniciar trajeto**. No cliente: entrar e acompanhar.
 
