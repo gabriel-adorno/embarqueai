@@ -28,6 +28,24 @@ export async function geocodeAddress(
   return { lat: loc.lat, lng: loc.lng };
 }
 
+/** Junta a polilinha de cada passo de cada trecho, sem repetir o ponto de emenda. */
+function detailedPath(
+  legs: { steps?: { polyline?: { points: string } }[] }[] | undefined,
+): LatLng[] {
+  const out: LatLng[] = [];
+  for (const leg of legs ?? []) {
+    for (const step of leg.steps ?? []) {
+      if (!step.polyline?.points) continue;
+      for (const p of decodePolyline(step.polyline.points)) {
+        const last = out[out.length - 1];
+        if (last && last.lat === p.lat && last.lng === p.lng) continue;
+        out.push(p);
+      }
+    }
+  }
+  return out;
+}
+
 export async function directions(env: Env, points: LatLng[]): Promise<DirectionsOk> {
   if (points.length < 2) {
     const coords = points.map((p) => ({ latitude: p.lat, longitude: p.lng }));
@@ -56,12 +74,17 @@ export async function directions(env: Env, points: LatLng[]): Promise<Directions
       status: string;
       routes?: {
         overview_polyline?: { points: string };
-        legs?: { distance?: { value: number } }[];
+        legs?: {
+          distance?: { value: number };
+          steps?: { polyline?: { points: string } }[];
+        }[];
       }[];
     };
     const route = data.routes?.[0];
     if (data.status === 'OK' && route?.overview_polyline?.points) {
-      const decoded = decodePolyline(route.overview_polyline.points);
+      // O overview_polyline é simplificado e corta esquinas; os steps seguem a rua.
+      const detailed = detailedPath(route.legs);
+      const decoded = detailed.length >= 2 ? detailed : decodePolyline(route.overview_polyline.points);
       const distance_m =
         route.legs?.reduce((sum, leg) => sum + (leg.distance?.value ?? 0), 0) ??
         Math.round(pathLengthM(decoded));
