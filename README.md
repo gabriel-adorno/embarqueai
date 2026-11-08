@@ -6,7 +6,7 @@ Idioma **pt-BR**. Expo SDK 57. O app já usa o **Cloudflare Worker** de produç�
 
 <p>
   <img alt="Expo" src="https://img.shields.io/badge/Expo-SDK%2057-000020?logo=expo" />
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white" />
   <img alt="React Native" src="https://img.shields.io/badge/React%20Native-0.86-61DAFB?logo=react&logoColor=black" />
 </p>
 
@@ -60,7 +60,7 @@ A chave de **servidor** do Google fica só no Worker. O app só leva a chave de 
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
 2. Authentication → Providers → Email ligado. Para o seed funcionar fácil, desligue **Confirm email** (ou confirme os usuários no dashboard).
-3. SQL Editor: cole e rode [`supabase/migrations/001_init.sql`](supabase/migrations/001_init.sql).
+3. SQL Editor: rode **em ordem** todos os arquivos de [`supabase/migrations/`](supabase/migrations/) (`001_init.sql` até o último). Todos podem ser rodados de novo sem estragar dados.
 4. Settings → API: copie URL, `anon` e `service_role`.
 
 ### 2. Cloudflare Worker
@@ -119,6 +119,44 @@ EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=
 ```
 
 Worker local: `EXPO_PUBLIC_API_URL=http://localhost:8787` (emulador Android `http://10.0.2.2:8787`; celular físico, IP da LAN e `wrangler dev --ip 0.0.0.0`). Mock: `EXPO_PUBLIC_API_URL=mock`. Reinicie o Expo depois de mudar a URL.
+
+### 5. Publicar o Worker
+
+O `wrangler.jsonc` não fixa a conta. Publique sempre informando a conta dona do Worker,
+senão o `wrangler` cria uma cópia vazia na conta que estiver logada:
+
+```bash
+cd worker
+npx wrangler login
+CLOUDFLARE_ACCOUNT_ID=<id-da-conta> npx wrangler deploy
+```
+
+O ID aparece em `npx wrangler whoami`. Para voltar à versão anterior: `npx wrangler rollback`.
+Depois do deploy, `GET /health` deve responder `{"ok":true}`.
+
+### 6. Notificações push
+
+Push **não funciona no Expo Go** (Android, desde o SDK 53); use development build.
+
+1. Rode as migrations até a `008_push_tokens.sql`.
+2. `npx eas-cli init` e coloque o ID em `.env.local` como `EAS_PROJECT_ID=...`.
+3. Android: configure as credenciais do Firebase (FCM) no EAS quando o `eas build` pedir.
+4. Opcional: se ligar *Enhanced Push Security* no Expo, crie o segredo `EXPO_ACCESS_TOKEN` no Worker.
+
+Os avisos (van chegando, embarque/desembarque, aviso do transportador) saem do Worker.
+No web e no modo mock o app continua com os avisos locais.
+
+### 7. Textos legais e suporte
+
+- Política de Privacidade e Termos: [`src/lib/legal.ts`](src/lib/legal.ts). É um **rascunho**:
+  preencha responsável e contato, revise com alguém da área jurídica e mude `reviewed` para `true`.
+- Contato de suporte da tela Conta: [`src/lib/support.ts`](src/lib/support.ts).
+
+### Verificação automática (CI)
+
+A cada push na `main` e em cada PR, o GitHub Actions roda TypeScript e `expo install --check`
+no app, e TypeScript + `wrangler deploy --dry-run` no Worker
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ## Credenciais para enviar (checklist)
 
