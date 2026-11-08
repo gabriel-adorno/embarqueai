@@ -319,6 +319,6 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFill,
     overflow: 'hidden',
-    backgroundColor: '#f4f4f2',
+    backgroundColor: colors.mapBackground,
   },
 });

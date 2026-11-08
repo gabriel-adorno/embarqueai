@@ -27,11 +27,11 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: colors.glass,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(18, 21, 26, 0.08)',
+    borderColor: colors.hairline,
     boxShadow: '0px 8px 18px rgba(11, 18, 32, 0.12)',
   },
 });

@@ -55,7 +55,7 @@ function RoleTile({
         <Text style={styles.tileSub}>{subtitle}</Text>
       </View>
       <View style={styles.arrow}>
-        <PremiumIcon name="chevron" size={16} color={colors.white} />
+        <PremiumIcon name="chevron" size={16} color={colors.strongFg} />
       </View>
     </Pressable>
   );
@@ -67,12 +67,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 22,
     padding: 18,
     marginBottom: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(18, 21, 26, 0.08)',
+    borderColor: colors.hairline,
     boxShadow: '0px 8px 16px rgba(11, 18, 32, 0.08)',
   },
   pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.tabInk,
+    backgroundColor: colors.strongBg,
     alignItems: 'center',
     justifyContent: 'center',
   },

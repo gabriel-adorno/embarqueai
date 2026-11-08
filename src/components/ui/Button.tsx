@@ -28,13 +28,13 @@ export function Button({
   const palette = {
     primary: { bg: colors.primary, fg: colors.white, border: colors.primary },
     secondary: {
-      bg: colors.white,
+      bg: colors.card,
       fg: colors.primary,
       border: colors.border,
     },
     ghost: { bg: 'transparent', fg: colors.primary, border: 'transparent' },
     danger: {
-      bg: colors.white,
+      bg: colors.card,
       fg: colors.danger,
       border: colors.danger,
     },

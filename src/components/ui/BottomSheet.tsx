@@ -19,14 +19,14 @@ export function BottomSheet({ children, floating = false }: Props) {
 
 const styles = StyleSheet.create({
   sheet: {
-    backgroundColor: 'rgba(255,255,255,0.94)',
+    backgroundColor: colors.glass,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(18, 21, 26, 0.08)',
+    borderColor: colors.hairline,
     borderBottomWidth: 0,
     boxShadow: '0px -10px 28px rgba(11, 18, 32, 0.16)',
   },
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 5,
     borderRadius: 999,
-    backgroundColor: 'rgba(18, 21, 26, 0.14)',
+    backgroundColor: colors.handle,
     marginBottom: 14,
   },
 });

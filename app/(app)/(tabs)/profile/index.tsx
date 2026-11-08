@@ -12,7 +12,7 @@ import { Screen } from '@/src/components/ui/Screen';
 import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { LoadingState } from '@/src/components/ui/States';
 import { getProfile, updateProfile } from '@/src/services/profiles';
-import { colors } from '@/src/theme/colors';
+import { colors, isDark } from '@/src/theme/colors';
 import { useSessionStore } from '@/src/store/session';
 import { notifyError, notifyKey } from '@/src/lib/notify';
 import { changePassword } from '@/src/services/auth';
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   badgeText: {
-    color: colors.primaryDark,
+    color: isDark ? colors.link : colors.primaryDark,
     fontWeight: '700',
     fontSize: 13,
   },

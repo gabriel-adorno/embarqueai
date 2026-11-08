@@ -30,9 +30,9 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(18, 21, 26, 0.08)',
+    borderColor: colors.hairline,
     boxShadow: '0px 6px 12px rgba(11, 18, 32, 0.1)',
   },
   light: {
