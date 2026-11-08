@@ -1,5 +1,6 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { MapView } from '@/src/components/map/MapView';
@@ -10,7 +11,17 @@ import { Screen } from '@/src/components/ui/Screen';
 import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { EmptyState, LoadingState } from '@/src/components/ui/States';
 import { listFollows } from '@/src/services/follows';
-import { listGroupMembers, listGroupsForClient } from '@/src/services/groups';
+import {
+  clearAbsence,
+  listAbsences,
+  listGroupMembers,
+  listGroupsForClient,
+  listGroupsForTransporter,
+  setAbsence,
+} from '@/src/services/groups';
+import { href } from '@/src/lib/href';
+import { listVehicles } from '@/src/services/vehicles';
+import { FirstSteps } from '@/src/components/trip/FirstSteps';
 import { getRoutePolyline, regionFromPoints } from '@/src/services/maps';
 import { listRoutePoints, listRoutes } from '@/src/services/routes';
 import {
@@ -88,6 +99,58 @@ export default function HomeScreen() {
     },
   });
 
+  // Grupos em que o próprio usuário viaja (não os de quem ele acompanha) e a ausência de hoje.
+  const router = useRouter();
+  const mine = useQuery({
+    queryKey: ['home-my-groups', user?.id],
+    enabled: Boolean(user),
+    queryFn: async () => {
+      const groups = await listGroupsForClient(user!.id).catch(() => []);
+      const out: { id: string; name: string; absent: boolean }[] = [];
+      for (const group of groups) {
+        const members = await listGroupMembers(group.id).catch(() => []);
+        if (!members.some((member) => member.user_id === user!.id)) continue;
+        const absences = await listAbsences(group.id).catch(() => []);
+        out.push({
+          id: group.id,
+          name: group.name,
+          absent: absences.some((item) => item.user_id === user!.id),
+        });
+      }
+      return out;
+    },
+  });
+
+  const absenceMut = useMutation({
+    mutationFn: (input: { groupId: string; absent: boolean }) =>
+      input.absent ? clearAbsence(input.groupId, user!.id) : setAbsence(input.groupId, user!.id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['home-my-groups'] });
+      void qc.invalidateQueries({ queryKey: ['group'] });
+    },
+    onError: (err: Error) => notifyError(err.message),
+  });
+
+  const isTransporter = user?.user_metadata.role === 'transporter';
+  const setup = useQuery({
+    queryKey: ['first-steps', user?.id],
+    enabled: Boolean(user) && isTransporter,
+    queryFn: async () => {
+      const [vehicles, groups] = await Promise.all([
+        listVehicles(user!.id).catch(() => []),
+        listGroupsForTransporter(user!.id).catch(() => []),
+      ]);
+      return { vehicles: vehicles.length, groups: groups.length };
+    },
+  });
+  // Ao voltar para o Início (ex.: depois de cadastrar o veículo), atualiza os passos.
+  const refetchSetup = setup.refetch;
+  useFocusEffect(
+    useCallback(() => {
+      if (isTransporter) void refetchSetup();
+    }, [isTransporter, refetchSetup]),
+  );
+
   const alerts = useQuery({
     queryKey: ['alerts', user?.id],
     enabled: Boolean(user),
@@ -122,8 +185,20 @@ export default function HomeScreen() {
   }
 
   if (!routes.length) {
+    if (user?.user_metadata.role === 'transporter') {
+      return (
+        <Screen tab refreshable>
+          <ScreenTitle title={`Olá, ${firstName}`} subtitle="Vamos montar sua operação" />
+          <FirstSteps
+            vehicles={setup.data?.vehicles ?? 0}
+            groups={setup.data?.groups ?? 0}
+            routes={0}
+          />
+        </Screen>
+      );
+    }
     return (
-      <Screen tab>
+      <Screen tab refreshable>
         <ScreenTitle title={`Olá, ${firstName}`} subtitle="EmbarqueAI" />
         <EmptyState
           title="Nenhuma rota"
@@ -221,6 +296,34 @@ export default function HomeScreen() {
               </View>
             </View>
           ) : null}
+          {(mine.data ?? []).map((group) => (
+            <View key={group.id} style={styles.mineRow}>
+              {!live ? (
+                <View style={styles.replyAction}>
+                  <Button
+                    size="sm"
+                    variant={group.absent ? 'secondary' : 'danger'}
+                    label={group.absent ? 'Vou hoje' : 'Não vou hoje'}
+                    loading={absenceMut.isPending && absenceMut.variables?.groupId === group.id}
+                    onPress={() => absenceMut.mutate({ groupId: group.id, absent: group.absent })}
+                  />
+                </View>
+              ) : null}
+              <View style={styles.replyAction}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  label={(mine.data?.length ?? 0) > 1 ? group.name : 'Meu grupo'}
+                  onPress={() =>
+                    router.push(href({ pathname: '/(app)/(tabs)/groups/[id]', params: { id: group.id } }))
+                  }
+                />
+              </View>
+            </View>
+          ))}
+          {mine.data?.some((group) => group.absent) && !live ? (
+            <Text style={styles.reply}>Você avisou que não vai hoje.</Text>
+          ) : null}
           <View style={styles.statusRow}>
             <View style={[styles.dot, !live && styles.dotOff]} />
             <Text style={styles.status}>
@@ -297,4 +400,5 @@ const styles = StyleSheet.create({
   reply: { color: colors.textMuted, marginBottom: 4 },
   replies: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   replyAction: { flex: 1 },
+  mineRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
 });

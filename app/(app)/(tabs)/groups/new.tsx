@@ -55,7 +55,7 @@ export default function NewGroupScreen() {
 
   return (
     <TransporterOnly fallback="/(app)/(tabs)/groups">
-    <Screen tab showBack>
+    <Screen tab keyboard showBack>
         <ScreenTitle
           title="Novo grupo"
           subtitle="Depois adicione os passageiros. A rota é escolhida ao criar a rota."
@@ -83,6 +83,9 @@ export default function NewGroupScreen() {
           const selected = form.watch('vehicle_id') === vehicle.id;
           return (
             <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: selected }}
+              accessibilityLabel={`${vehicle.type} ${formatPlate(vehicle.plate)}`}
               key={vehicle.id}
               onPress={() => form.setValue('vehicle_id', vehicle.id)}
               style={[styles.option, selected && styles.optionOn]}

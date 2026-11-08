@@ -157,7 +157,7 @@ export default function GroupDetailScreen() {
 
   return (
     <>
-    <Screen tab refreshable showBack>
+    <Screen tab keyboard refreshable showBack>
         <ScreenTitle
           title={query.data?.group.name ?? 'Grupo'}
           subtitle={
@@ -204,6 +204,9 @@ export default function GroupDetailScreen() {
                           const selected = member.point_id === point.id;
                           return (
                             <Pressable
+                              accessibilityRole="button"
+                              accessibilityState={{ selected: selected }}
+                              accessibilityLabel={point.name}
                               key={point.id}
                               onPress={() =>
                                 pointMut.mutate({
@@ -265,6 +268,9 @@ export default function GroupDetailScreen() {
                   const selected = vehicleId === item.id;
                   return (
                     <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: selected }}
+                      accessibilityLabel={`${item.type} ${formatPlate(item.plate)}`}
                       key={item.id}
                       onPress={() => setVehicleId(item.id)}
                       style={[styles.option, selected && styles.optionOn]}
@@ -304,6 +310,9 @@ export default function GroupDetailScreen() {
                           const selected = member.point_id === point.id;
                           return (
                             <Pressable
+                              accessibilityRole="button"
+                              accessibilityState={{ selected: selected }}
+                              accessibilityLabel={point.name}
                               key={point.id}
                               onPress={() =>
                                 pointMut.mutate({

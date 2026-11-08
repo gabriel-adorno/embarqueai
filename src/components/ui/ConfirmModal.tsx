@@ -32,10 +32,16 @@ export function ConfirmModal({
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onNo}>
-      <Pressable style={styles.backdrop} onPress={onNo} accessibilityLabel="Fechar">
+      <Pressable
+        style={styles.backdrop}
+        onPress={onNo}
+        accessibilityRole="button"
+        accessibilityLabel="Fechar"
+      >
         <Pressable
           style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 20) }]}
           onPress={() => undefined}
+          accessible={false}
         >
           <View style={styles.handle} />
           <Text style={[styles.title, body ? styles.titleWithBody : null]}>{title}</Text>

@@ -76,7 +76,7 @@ export default function ProfileTab() {
 
   return (
     <>
-    <Screen tab>
+    <Screen tab keyboard>
         <ScreenTitle
           title="Conta"
           subtitle={
