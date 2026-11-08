@@ -71,7 +71,7 @@ export default function RouteLiveScreen() {
 
   if (query.isLoading) {
     return (
-      <Screen tab showBack>
+      <Screen tab keyboard showBack>
         <LoadingState />
       </Screen>
     );
@@ -79,7 +79,7 @@ export default function RouteLiveScreen() {
 
   if (query.isError) {
     return (
-      <Screen tab showBack>
+      <Screen tab keyboard showBack>
         <ErrorState message="Não foi possível abrir a rota." />
       </Screen>
     );
@@ -87,7 +87,7 @@ export default function RouteLiveScreen() {
 
   if (!query.data?.live) {
     return (
-      <Screen tab showBack>
+      <Screen tab keyboard showBack>
         <ScreenTitle
           title={query.data?.route.name ?? 'Rota'}
           subtitle={

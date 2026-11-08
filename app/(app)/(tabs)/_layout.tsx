@@ -34,9 +34,9 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Início' }} />
       <Tabs.Screen name="people" options={{ title: 'Pessoas', href: family ? undefined : null }} />
+      <Tabs.Screen name="vehicles" options={{ title: 'Veículos', href: family ? null : undefined }} />
       <Tabs.Screen name="groups" options={{ title: 'Grupos', href: family ? null : undefined }} />
       <Tabs.Screen name="routes" options={{ title: 'Rotas', href: family ? null : undefined }} />
-      <Tabs.Screen name="vehicles" options={{ title: 'Veículos', href: family ? null : undefined }} />
       <Tabs.Screen name="profile" options={{ title: 'Conta' }} />
     </Tabs>
     </>

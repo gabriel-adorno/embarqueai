@@ -56,7 +56,7 @@ export default function VanDetailScreen() {
   });
 
   return (
-    <Screen tab refreshable showBack>
+    <Screen tab keyboard refreshable showBack>
       <ScreenTitle
         title={query.data?.vehicle.type ?? 'Veículo'}
         subtitle={isTransporter ? 'Tipo, placa, lugares e foto' : 'Dados do veículo'}
@@ -76,6 +76,7 @@ export default function VanDetailScreen() {
                   style={[styles.chip, selected && styles.chipOn]}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
+                  accessibilityLabel={`Tipo: ${item}`}
                 >
                   <Text style={[styles.chipText, selected && styles.chipTextOn]}>{item}</Text>
                 </Pressable>

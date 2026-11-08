@@ -43,7 +43,7 @@ O mapa nativo só no celular/simulador. Web é fallback.
 | Cliente | `cliente@embarqueai.com` | `senha123` |
 | Transportador | `transportador@embarqueai.com` | `senha123` |
 
-Fluxo no transportador: **veículo → rota → grupo (membros) → iniciar rota**. No cliente: entrar e acompanhar.
+Fluxo no transportador: **veículo → grupo (com os passageiros) → rota → iniciar trajeto**. No cliente: entrar e acompanhar.
 
 ## Backend (Supabase + Worker + Google Maps)
 

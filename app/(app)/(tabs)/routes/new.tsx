@@ -96,7 +96,7 @@ export default function NewRouteScreen() {
 
   return (
     <TransporterOnly fallback="/(app)/(tabs)/routes">
-    <Screen tab showBack>
+    <Screen tab keyboard showBack>
         <ScreenTitle
           title="Nova rota"
           subtitle="Pontos da viagem e grupos que vão nessa rota."
@@ -128,6 +128,9 @@ export default function NewRouteScreen() {
           const current = routeName(group.route_id);
           return (
             <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={group.name}
               key={group.id}
               onPress={() => {
                 if (on) {
