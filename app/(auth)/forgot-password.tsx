@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, Text } from 'react-native';
@@ -14,12 +14,9 @@ import { emailSchema, newPasswordSchema, otpSchema } from '@/src/lib/schemas';
 import * as auth from '@/src/services/auth';
 import { colors } from '@/src/theme/colors';
 import type { FlashMessage } from '@/src/store/toast';
-import type { Role } from '@/src/types/database';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ role?: Role }>();
-  const role: Role = params.role === 'transporter' ? 'transporter' : 'client';
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [email, setEmail] = useState('');
   const [banner, setBanner] = useState<FlashMessage | null>(null);
@@ -71,7 +68,7 @@ export default function ForgotPasswordScreen() {
       return;
     }
     notifyKey('passwordChanged');
-    router.replace(`/(auth)/login?role=${role}`);
+    router.replace('/(auth)/login');
   });
 
   return (

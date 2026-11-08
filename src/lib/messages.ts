@@ -3,10 +3,6 @@ export const APP_MESSAGES = {
     title: 'Credenciais inválidas',
     body: 'E-mail ou senha não conferem. Verifique os dados ou use uma conta de teste.',
   },
-  wrongRole: {
-    title: 'Acesso incompatível',
-    body: 'Esta conta pertence ao outro tipo de usuário. Volte e escolha Passageiro ou Transportador.',
-  },
   emailTaken: {
     title: 'E-mail já cadastrado',
     body: 'Tente entrar com essa conta ou use outro e-mail.',

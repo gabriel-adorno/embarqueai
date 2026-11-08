@@ -1,104 +1,55 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { PremiumIcon } from '@/src/components/ui/PremiumIcon';
+import { Button } from '@/src/components/ui/Button';
 import { Screen } from '@/src/components/ui/Screen';
 import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { colors } from '@/src/theme/colors';
 
-export default function RoleSelectScreen() {
+const HIGHLIGHTS = [
+  { glyph: '📍', text: 'Veja a van chegando no mapa, em tempo real.' },
+  { glyph: '🔔', text: 'Avisos de embarque, desembarque e atraso.' },
+  { glyph: '🚐', text: 'Para transportadores: rotas, grupos e trajeto.' },
+];
+
+export default function WelcomeScreen() {
   const router = useRouter();
   return (
     <Screen showBrand scroll={false}>
       <View style={styles.body}>
-        <ScreenTitle title="Bem-vindo" subtitle="Escolha como você embarca hoje." />
-        <RoleTile
-          glyph="📍"
-          title="Passageiro"
-          subtitle="Sua van, ou a de quem você acompanha"
-          onPress={() => router.push('/(auth)/login?role=client')}
-        />
-        <RoleTile
-          glyph="🚐"
-          title="Transportador"
-          subtitle="Rotas, veículos, grupos e trajeto"
-          onPress={() => router.push('/(auth)/login?role=transporter')}
-        />
+        <ScreenTitle title="Bem-vindo" subtitle="O transporte escolar e de trabalho, acompanhado de perto." />
+        <View style={styles.list}>
+          {HIGHLIGHTS.map((item) => (
+            <View key={item.text} style={styles.row}>
+              <View style={styles.iconWrap}>
+                <Text style={styles.glyph}>{item.glyph}</Text>
+              </View>
+              <Text style={styles.rowText}>{item.text}</Text>
+            </View>
+          ))}
+        </View>
+        <Button label="Entrar" onPress={() => router.push('/(auth)/login')} />
+        <View style={styles.gap}>
+          <Button label="Criar conta" variant="secondary" onPress={() => router.push('/(auth)/sign-up')} />
+        </View>
       </View>
     </Screen>
   );
 }
 
-function RoleTile({
-  glyph,
-  title,
-  subtitle,
-  onPress,
-}: {
-  glyph: string;
-  title: string;
-  subtitle: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
-    >
-      <View style={styles.iconWrap}>
-        <Text style={styles.glyph}>{glyph}</Text>
-      </View>
-      <View style={styles.copy}>
-        <Text style={styles.tileTitle}>{title}</Text>
-        <Text style={styles.tileSub}>{subtitle}</Text>
-      </View>
-      <View style={styles.arrow}>
-        <PremiumIcon name="chevron" size={16} color={colors.strongFg} />
-      </View>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   body: { flex: 1, justifyContent: 'center' },
-  tile: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: colors.card,
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.hairline,
-    boxShadow: '0px 8px 16px rgba(11, 18, 32, 0.08)',
-  },
-  pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
+  list: { gap: 12, marginBottom: 28 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   iconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  glyph: { fontSize: 22 },
-  copy: { flex: 1 },
-  tileTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.tabInk,
-    letterSpacing: -0.3,
-  },
-  tileSub: { marginTop: 4, color: colors.textMuted, fontSize: 14, lineHeight: 20 },
-  arrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.strongBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  glyph: { fontSize: 20 },
+  rowText: { flex: 1, color: colors.ink, fontSize: 15, lineHeight: 21 },
+  gap: { marginTop: 12 },
 });
