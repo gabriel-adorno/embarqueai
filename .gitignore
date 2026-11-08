@@ -46,3 +46,7 @@ worker/.dev.vars
 # generated native folders
 /ios
 /android
+
+# Instruções locais para assistentes de código (não versionar)
+CLAUDE.md
+AGENTS.md
