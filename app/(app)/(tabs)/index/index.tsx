@@ -328,7 +328,10 @@ export default function HomeScreen() {
             <View style={[styles.dot, !live && styles.dotOff]} />
             <Text style={styles.status}>
               {live
-                ? `Em rota · chegada ${formatEta(van?.remaining_m, true)}`
+                ? (() => {
+                    const eta = formatEta(van?.remaining_m, true);
+                    return eta === 'Chegando' ? 'Em rota · chegando' : `Em rota · chegada ${eta}`;
+                  })()
                 : 'Aguardando o transportador iniciar o trajeto'}
             </Text>
           </View>

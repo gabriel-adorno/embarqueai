@@ -169,16 +169,29 @@ function syncOverlays(
       return;
     }
     map.addSource(sourceId, { type: 'geojson', data });
+    const layout = { 'line-cap': 'round', 'line-join': 'round' };
+    // Contorno branco por baixo: destaca a rota sobre ruas e avenidas coloridas.
+    map.addLayer({
+      id: `${layerId}-casing`,
+      type: 'line',
+      source: sourceId,
+      paint: {
+        'line-color': '#FFFFFF',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 5, 14, 8, 18, 14],
+        'line-opacity': 0.95,
+      },
+      layout,
+    });
     map.addLayer({
       id: layerId,
       type: 'line',
       source: sourceId,
       paint: {
         'line-color': colors.primary,
-        'line-width': 4,
-        'line-opacity': 0.9,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 14, 5, 18, 9],
+        'line-opacity': 1,
       },
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      layout,
     });
   });
 
