@@ -35,7 +35,6 @@ export function ConfirmModal({
       <Pressable
         style={styles.backdrop}
         onPress={onNo}
-        accessibilityRole="button"
         accessibilityLabel="Fechar"
       >
         <Pressable
@@ -72,7 +71,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,

@@ -29,9 +29,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 90,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.strongBg,
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
-  text: { color: colors.white, fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  text: { color: colors.strongFg, fontSize: 13, fontWeight: '700', textAlign: 'center' },
 });

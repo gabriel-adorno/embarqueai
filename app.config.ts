@@ -23,7 +23,7 @@ const config: ExpoConfig = {
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'embarqueai',
-  userInterfaceStyle: 'light',
+  userInterfaceStyle: 'automatic',
   extra: {
     apiUrl,
     ...(easProjectId ? { eas: { projectId: easProjectId } } : {}),
