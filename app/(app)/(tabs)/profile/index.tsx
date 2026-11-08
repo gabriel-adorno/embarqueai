@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { Link } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
+import { ConfirmModal } from '@/src/components/ui/ConfirmModal';
 import { Input } from '@/src/components/ui/Input';
 import { Screen } from '@/src/components/ui/Screen';
 import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
@@ -13,11 +15,14 @@ import { colors } from '@/src/theme/colors';
 import { useSessionStore } from '@/src/store/session';
 import { notifyError, notifyKey } from '@/src/lib/notify';
 import { changePassword } from '@/src/services/auth';
+import { href } from '@/src/lib/href';
 
 export default function ProfileTab() {
   const qc = useQueryClient();
   const session = useSessionStore((s) => s.session);
   const signOut = useSessionStore((s) => s.signOut);
+  const deleteAccount = useSessionStore((s) => s.deleteAccount);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const role = session?.user.user_metadata.role;
   const userId = session?.user.id;
   const [password, setPassword] = useState('');
@@ -50,6 +55,14 @@ export default function ProfileTab() {
     onError: (err: Error) => notifyError(err.message),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: () => deleteAccount(),
+    onError: (err: Error) => {
+      setConfirmDelete(false);
+      notifyError(err.message);
+    },
+  });
+
   const mutation = useMutation({
     mutationFn: (values: { name: string; phone: string }) =>
       updateProfile(userId!, { name: values.name, phone: values.phone }),
@@ -60,6 +73,7 @@ export default function ProfileTab() {
   });
 
   return (
+    <>
     <Screen tab>
         <ScreenTitle
           title="Conta"
@@ -141,11 +155,44 @@ export default function ProfileTab() {
         <View style={styles.gap}>
           <Button label="Sair" variant="danger" onPress={() => void signOut()} />
         </View>
+        <View style={styles.legal}>
+          <Link href={href('/legal/privacy')} style={styles.legalLink}>
+            Política de Privacidade
+          </Link>
+          <Link href={href('/legal/terms')} style={styles.legalLink}>
+            Termos de Uso
+          </Link>
+        </View>
+        <View style={styles.gap}>
+          <Button
+            label="Excluir minha conta"
+            variant="ghost"
+            onPress={() => setConfirmDelete(true)}
+          />
+        </View>
     </Screen>
+    <ConfirmModal
+      visible={confirmDelete}
+      title="Excluir sua conta?"
+      body={
+        role === 'transporter'
+          ? 'Seus veículos, rotas, grupos e histórico de viagens serão apagados. Isso não pode ser desfeito. Se algum grupo ainda tiver passageiros, remova-os antes.'
+          : 'Seus dados, ausências, vínculos com grupos e com quem você acompanha serão apagados. Isso não pode ser desfeito.'
+      }
+      yesLabel="Excluir"
+      noLabel="Cancelar"
+      danger
+      loading={deleteMut.isPending}
+      onNo={() => setConfirmDelete(false)}
+      onYes={() => deleteMut.mutate()}
+    />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  legal: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 20 },
+  legalLink: { color: colors.primary, fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
   avatar: {
     alignSelf: 'center',
     width: 88,

@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppMessage } from '@/src/components/ui/AppMessage';
 import { Button } from '@/src/components/ui/Button';
@@ -10,10 +11,12 @@ import { Screen } from '@/src/components/ui/Screen';
 import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { flashFromAuthError, notifyKey } from '@/src/lib/notify';
 import { href } from '@/src/lib/href';
+import { LEGAL } from '@/src/lib/legal';
 import { signUpSchema } from '@/src/lib/schemas';
 import * as auth from '@/src/services/auth';
 import { useSessionStore } from '@/src/store/session';
 import type { FlashMessage } from '@/src/store/toast';
+import { colors } from '@/src/theme/colors';
 import type { Role } from '@/src/types/database';
 
 type Form = {
@@ -22,6 +25,7 @@ type Form = {
   phone?: string;
   password: string;
   confirmPassword: string;
+  acceptTerms: boolean;
 };
 
 export default function SignUpScreen() {
@@ -43,6 +47,7 @@ export default function SignUpScreen() {
       phone: '',
       password: '',
       confirmPassword: '',
+      acceptTerms: false,
     },
   });
 
@@ -51,7 +56,13 @@ export default function SignUpScreen() {
       email: values.email,
       password: values.password,
       options: {
-        data: { name: values.name, role, phone: values.phone },
+        data: {
+          name: values.name,
+          role,
+          phone: values.phone,
+          terms_version: LEGAL.version,
+          terms_accepted_at: new Date().toISOString(),
+        },
       },
     });
     setBanner(null);
@@ -156,7 +167,60 @@ export default function SignUpScreen() {
               />
             )}
           />
+          <Controller
+            control={control}
+            name="acceptTerms"
+            render={({ field: { onChange, value } }) => (
+              <View style={styles.terms}>
+                <Pressable
+                  onPress={() => onChange(!value)}
+                  style={styles.checkRow}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: value }}
+                  accessibilityLabel="Li e aceito os Termos de Uso e a Política de Privacidade"
+                >
+                  <View style={[styles.box, value && styles.boxOn]}>
+                    {value ? <Text style={styles.check}>✓</Text> : null}
+                  </View>
+                  <Text style={styles.termsText}>
+                    Li e aceito os{' '}
+                    <Link href={href('/legal/terms')} style={styles.link}>
+                      Termos de Uso
+                    </Link>{' '}
+                    e a{' '}
+                    <Link href={href('/legal/privacy')} style={styles.link}>
+                      Política de Privacidade
+                    </Link>
+                    .
+                  </Text>
+                </Pressable>
+                {errors.acceptTerms?.message ? (
+                  <Text style={styles.error}>{errors.acceptTerms.message}</Text>
+                ) : null}
+              </View>
+            )}
+          />
           <Button label="Continuar" loading={isSubmitting} onPress={onSubmit} />
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  terms: { marginBottom: 16 },
+  checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  box: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  boxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  check: { color: colors.white, fontSize: 14, fontWeight: '800', lineHeight: 16 },
+  termsText: { flex: 1, color: colors.ink, fontSize: 14, lineHeight: 20 },
+  link: { color: colors.primary, fontWeight: '700', textDecorationLine: 'underline' },
+  error: { color: colors.error, fontSize: 13, marginTop: 6 },
+});

@@ -143,7 +143,9 @@ app.post('/auth/sign-up', async (c) => {
   const body = await c.req.json<{
     email: string;
     password: string;
-    options?: { data?: { name?: string; role?: Role; phone?: string } };
+    options?: {
+      data?: { name?: string; role?: Role; phone?: string; terms_version?: string; terms_accepted_at?: string };
+    };
   }>();
   const res = await authFetch(c.env, '/signup', {
     method: 'POST',
@@ -368,6 +370,45 @@ gated.patch('/profile/me', async (c) => {
     body: JSON.stringify({ name: body.name, phone: body.phone ?? null }),
   });
   return c.json(rows[0]);
+});
+
+gated.delete('/profile/me', async (c) => {
+  const me = c.get('profile');
+  const admin = adminToken(c.env);
+  if (me.role === 'transporter') {
+    const groups = await rest<{ id: string }[]>(
+      c.env,
+      admin,
+      'groups',
+      `?transporter_id=eq.${me.id}&select=id`,
+    );
+    const ids = (groups ?? []).map((group) => group.id);
+    if (ids.length) {
+      const members = await rest<{ user_id: string }[]>(
+        c.env,
+        admin,
+        'group_members',
+        `?group_id=in.(${ids.join(',')})&select=user_id&limit=1`,
+      );
+      if (members?.length) {
+        throw new HTTPException(409, {
+          message: 'Remova os passageiros ou exclua seus grupos antes de excluir a conta.',
+        });
+      }
+      // Por garantia, apaga os grupos (já vazios) antes; groups tem restrict com vehicles/routes.
+      await rest(c.env, admin, 'groups', `?transporter_id=eq.${me.id}`, { method: 'DELETE' });
+    }
+  }
+  // Apagar o usuário do Auth apaga em cascata o perfil e os dados ligados a ele.
+  const res = await fetch(`${c.env.SUPABASE_URL}/auth/v1/admin/users/${me.id}`, {
+    method: 'DELETE',
+    headers: { apikey: admin, Authorization: `Bearer ${admin}` },
+  });
+  if (!res.ok) {
+    console.warn('delete account: auth respondeu', res.status, await res.text());
+    throw new HTTPException(500, { message: 'Não foi possível excluir a conta. Tente de novo.' });
+  }
+  return c.json({ ok: true });
 });
 
 gated.get('/profile/:id', async (c) => {

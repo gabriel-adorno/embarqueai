@@ -70,7 +70,9 @@ let recoveryToken: string | null = null;
 export async function signUp(input: {
   email: string;
   password: string;
-  options: { data: { name: string; role: Role; phone?: string } };
+  options: {
+    data: { name: string; role: Role; phone?: string; terms_version?: string; terms_accepted_at?: string };
+  };
 }): Promise<AuthPayload> {
   const result = await api<AuthPayload>('/auth/sign-up', {
     method: 'POST',
@@ -154,6 +156,10 @@ export async function updateUser(input: { password: string }) {
 
 export async function getMyProfile(): Promise<Profile> {
   return api<Profile>('/profile/me');
+}
+
+export async function deleteMyAccount(): Promise<void> {
+  await api('/profile/me', { method: 'DELETE' });
 }
 
 export async function getProfile(id: string): Promise<Profile | null> {

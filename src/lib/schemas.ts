@@ -12,6 +12,9 @@ export const signUpSchema = z
     phone: z.string().optional(),
     password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
     confirmPassword: z.string().min(6, 'Confirme a senha.'),
+    acceptTerms: z
+      .boolean()
+      .refine((value) => value, 'Para criar a conta, aceite os Termos e a Política de Privacidade.'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'As senhas não coincidem.',
