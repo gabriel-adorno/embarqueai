@@ -4,6 +4,7 @@ import { uuid } from '@/src/lib/uuid';
 import * as remote from '@/src/services/remote';
 import { loadDb, mutateDb } from '@/src/services/store';
 import type { Vehicle } from '@/src/types/database';
+import { isValidPlate, normalizePlate, PLATE_ERROR, PLATE_TAKEN } from '@/src/lib/plate';
 
 export async function listVehicles(transporterId: string): Promise<Vehicle[]> {
   if (isRemote()) return remote.listVehicles(transporterId);
@@ -25,15 +26,21 @@ export async function createVehicle(input: {
   photo?: string | null;
 }): Promise<Vehicle> {
   if (isRemote()) return remote.createVehicle(input);
+  const plate = normalizePlate(input.plate);
+  if (!isValidPlate(plate)) throw new Error(PLATE_ERROR);
   const vehicle: Vehicle = {
     id: uuid(),
     transporter_id: input.transporter_id,
     type: input.type,
-    plate: input.plate.toUpperCase(),
+    plate,
     capacity: input.capacity ?? null,
     photo: input.photo ?? null,
   };
   await mutateDb((db) => {
+    const taken = db.vehicles.some(
+      (v) => v.transporter_id === input.transporter_id && normalizePlate(v.plate) === plate,
+    );
+    if (taken) throw new Error(PLATE_TAKEN);
     db.vehicles.push(vehicle);
   });
   return vehicle;
@@ -44,12 +51,21 @@ export async function updateVehicle(
   input: { type: string; plate: string; capacity?: number | null; photo?: string | null },
 ): Promise<Vehicle> {
   if (isRemote()) return remote.updateVehicle(id, input);
+  const plate = normalizePlate(input.plate);
+  if (!isValidPlate(plate)) throw new Error(PLATE_ERROR);
   let updated: Vehicle | undefined;
   await mutateDb((db) => {
     const vehicle = db.vehicles.find((item) => item.id === id);
     if (!vehicle) throw new Error('Veículo não encontrado.');
     vehicle.type = input.type;
-    vehicle.plate = input.plate.toUpperCase();
+    const taken = db.vehicles.some(
+      (v) =>
+        v.id !== id &&
+        v.transporter_id === vehicle.transporter_id &&
+        normalizePlate(v.plate) === plate,
+    );
+    if (taken) throw new Error(PLATE_TAKEN);
+    vehicle.plate = plate;
     vehicle.capacity = input.capacity ?? null;
     vehicle.photo = input.photo ?? null;
     updated = vehicle;

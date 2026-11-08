@@ -16,6 +16,7 @@ import { getProfile } from '@/src/services/profiles';
 import { getVehicle, updateVehicle } from '@/src/services/vehicles';
 import { useSessionStore } from '@/src/store/session';
 import { colors } from '@/src/theme/colors';
+import { formatPlate } from '@/src/lib/plate';
 
 const TYPES = ['Van', 'Micro-ônibus', 'Ônibus'] as const;
 
@@ -42,7 +43,7 @@ export default function VanDetailScreen() {
   useEffect(() => {
     if (!query.data) return;
     setType(query.data.vehicle.type);
-    setPlate(query.data.vehicle.plate);
+    setPlate(formatPlate(query.data.vehicle.plate));
     setCapacity(query.data.vehicle.capacity ? String(query.data.vehicle.capacity) : '');
     setPhoto(query.data.vehicle.photo ?? null);
   }, [query.data]);
@@ -55,7 +56,7 @@ export default function VanDetailScreen() {
   });
 
   return (
-    <Screen tab showBack>
+    <Screen tab keyboard refreshable showBack>
       <ScreenTitle
         title={query.data?.vehicle.type ?? 'Veículo'}
         subtitle={isTransporter ? 'Tipo, placa, lugares e foto' : 'Dados do veículo'}
@@ -75,6 +76,7 @@ export default function VanDetailScreen() {
                   style={[styles.chip, selected && styles.chipOn]}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
+                  accessibilityLabel={`Tipo: ${item}`}
                 >
                   <Text style={[styles.chipText, selected && styles.chipTextOn]}>{item}</Text>
                 </Pressable>
@@ -110,7 +112,7 @@ export default function VanDetailScreen() {
             icon="bus-outline"
             glyph="🚐"
             title={query.data.vehicle.type}
-            subtitle={`Placa ${query.data.vehicle.plate}${
+            subtitle={`Placa ${formatPlate(query.data.vehicle.plate)}${
               query.data.vehicle.capacity ? ` · ${query.data.vehicle.capacity} lugares` : ''
             }`}
           />

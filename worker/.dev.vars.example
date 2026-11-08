@@ -2,3 +2,5 @@ SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 GOOGLE_MAPS_SERVER_KEY=
+# Opcional: só se ligar "Enhanced Push Security" no painel do Expo.
+EXPO_ACCESS_TOKEN=

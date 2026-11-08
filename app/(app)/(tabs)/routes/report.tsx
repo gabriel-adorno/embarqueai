@@ -17,7 +17,7 @@ export default function ReportScreen() {
   });
 
   return (
-    <Screen tab showBack>
+    <Screen tab refreshable showBack>
       <ScreenTitle title="Relatório" subtitle="Viagens encerradas nos últimos 30 dias" />
       {query.isLoading ? <LoadingState /> : null}
       {query.isError ? (
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   summary: { flexDirection: 'row', gap: 8, marginTop: 16, marginBottom: 16 },
   stat: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 12,
   },

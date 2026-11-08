@@ -28,13 +28,13 @@ export function Button({
   const palette = {
     primary: { bg: colors.primary, fg: colors.white, border: colors.primary },
     secondary: {
-      bg: colors.white,
+      bg: colors.card,
       fg: colors.primary,
       border: colors.border,
     },
     ghost: { bg: 'transparent', fg: colors.primary, border: 'transparent' },
     danger: {
-      bg: colors.white,
+      bg: colors.card,
       fg: colors.danger,
       border: colors.danger,
     },
@@ -86,11 +86,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   elevated: {
-    shadowColor: colors.primaryDark,
-    shadowOpacity: 0.28,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    boxShadow: '0px 6px 10px rgba(22, 58, 107, 0.28)',
   },
   sm: {
     minHeight: 42,

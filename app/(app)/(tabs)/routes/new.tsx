@@ -1,11 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { TransporterOnly } from '@/src/components/nav/TransporterOnly';
 import { Button } from '@/src/components/ui/Button';
+import { ConfirmModal } from '@/src/components/ui/ConfirmModal';
 import { Input } from '@/src/components/ui/Input';
 import { Screen } from '@/src/components/ui/Screen';
 import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
@@ -13,7 +15,7 @@ import { EmptyState, LoadingState } from '@/src/components/ui/States';
 import { routeSchema } from '@/src/lib/schemas';
 import { geocodeAddress } from '@/src/services/maps';
 import { listGroupsForTransporter } from '@/src/services/groups';
-import { createRoute } from '@/src/services/routes';
+import { createRoute, listRoutes } from '@/src/services/routes';
 import { useSessionStore } from '@/src/store/session';
 import { notifyError, notifyKey } from '@/src/lib/notify';
 import { colors } from '@/src/theme/colors';
@@ -37,6 +39,18 @@ export default function NewRouteScreen() {
     queryFn: () => listGroupsForTransporter(user!.id),
   });
 
+  const routes = useQuery({
+    queryKey: ['routes', 'names', user?.id],
+    enabled: Boolean(user),
+    queryFn: () => listRoutes(user!.id),
+  });
+  const routeName = (routeId: string | null) =>
+    routeId ? routes.data?.find((route) => route.id === routeId)?.name ?? 'outra rota' : null;
+
+  const [pendingMove, setPendingMove] = useState<{ id: string; name: string; from: string } | null>(
+    null,
+  );
+
   const form = useForm<Form>({
     resolver: zodResolver(routeSchema),
     defaultValues: {
@@ -50,6 +64,8 @@ export default function NewRouteScreen() {
 
   const points = useFieldArray({ control: form.control, name: 'points' });
   const selected = form.watch('group_ids');
+  const selectGroup = (groupId: string) =>
+    form.setValue('group_ids', [...selected, groupId], { shouldValidate: true });
 
   const mutation = useMutation({
     mutationFn: async (values: Form) => {
@@ -80,7 +96,7 @@ export default function NewRouteScreen() {
 
   return (
     <TransporterOnly fallback="/(app)/(tabs)/routes">
-    <Screen tab showBack>
+    <Screen tab keyboard showBack>
         <ScreenTitle
           title="Nova rota"
           subtitle="Pontos da viagem e grupos que vão nessa rota."
@@ -109,20 +125,36 @@ export default function NewRouteScreen() {
         <Text style={styles.label}>Grupos nesta rota</Text>
         {groups.data?.map((group) => {
           const on = selected.includes(group.id);
+          const current = routeName(group.route_id);
           return (
             <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={group.name}
               key={group.id}
               onPress={() => {
-                const next = on
-                  ? selected.filter((id) => id !== group.id)
-                  : [...selected, group.id];
-                form.setValue('group_ids', next, { shouldValidate: true });
+                if (on) {
+                  form.setValue(
+                    'group_ids',
+                    selected.filter((id) => id !== group.id),
+                    { shouldValidate: true },
+                  );
+                } else if (current) {
+                  setPendingMove({ id: group.id, name: group.name, from: current });
+                } else {
+                  selectGroup(group.id);
+                }
               }}
               style={[styles.option, on && styles.optionOn]}
             >
               <Text style={[styles.optionText, on && styles.optionTextOn]}>
                 {group.name}
               </Text>
+              {current ? (
+                <Text style={[styles.optionHint, on && styles.optionHintOn]}>
+                  {on ? `Sai de: ${current}` : `Hoje na rota: ${current}`}
+                </Text>
+              ) : null}
             </Pressable>
           );
         })}
@@ -192,6 +224,19 @@ export default function NewRouteScreen() {
           onPress={form.handleSubmit((v) => mutation.mutate(v))}
         />
     </Screen>
+    <ConfirmModal
+      visible={Boolean(pendingMove)}
+      title={
+        pendingMove
+          ? `"${pendingMove.name}" já está na rota "${pendingMove.from}". Mover para esta nova rota? A rota atual ficará sem esse grupo.`
+          : ''
+      }
+      onNo={() => setPendingMove(null)}
+      onYes={() => {
+        if (pendingMove) selectGroup(pendingMove.id);
+        setPendingMove(null);
+      }}
+    />
     </TransporterOnly>
   );
 }
@@ -215,6 +260,8 @@ const styles = StyleSheet.create({
   optionOn: { borderColor: colors.primary, backgroundColor: colors.primary },
   optionText: { fontWeight: '700', color: colors.ink },
   optionTextOn: { color: colors.white },
+  optionHint: { color: colors.textMuted, fontSize: 12, marginTop: 4 },
+  optionHintOn: { color: colors.white, opacity: 0.85 },
   error: { color: colors.error, marginBottom: 8 },
   gap: { height: 8 },
 });

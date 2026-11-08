@@ -32,9 +32,8 @@ export function FloatingTabBar({ state, descriptors, navigation, insets }: Botto
   });
 
   return (
-    <View pointerEvents="box-none" style={styles.dock}>
+    <View style={styles.dock}>
       <View
-        pointerEvents="auto"
         style={[
           styles.pill,
           { marginBottom: Math.max(insets.bottom, floatingTabBar.extraBottom) },
@@ -49,7 +48,7 @@ export function FloatingTabBar({ state, descriptors, navigation, insets }: Botto
               ? options.tabBarLabel
               : (options.title ?? route.name);
           const icon = TAB_ICONS[route.name] ?? 'map';
-          const color = focused ? colors.white : colors.tabMuted;
+          const color = focused ? colors.strongFg : colors.tabMuted;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -90,6 +89,7 @@ export function FloatingTabBar({ state, descriptors, navigation, insets }: Botto
 
 const styles = StyleSheet.create({
   dock: {
+    pointerEvents: 'box-none',
     position: 'absolute',
     left: 0,
     right: 0,
@@ -97,6 +97,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   pill: {
+    pointerEvents: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'stretch',
@@ -105,14 +106,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 6,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    backgroundColor: colors.glassSoft,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(18, 21, 26, 0.08)',
-    shadowColor: '#0B1220',
-    shadowOpacity: 0.16,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
+    borderColor: colors.hairline,
+    boxShadow: '0px 10px 20px rgba(11, 18, 32, 0.16)',
   },
   item: {
     flex: 1,
@@ -128,7 +125,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconChipActive: {
-    backgroundColor: colors.tabInk,
+    backgroundColor: colors.strongBg,
   },
   label: {
     fontSize: 10,

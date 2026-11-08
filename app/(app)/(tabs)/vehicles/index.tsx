@@ -14,6 +14,7 @@ import { listGroupsForClient } from '@/src/services/groups';
 import { deleteVehicle, getVehicle, listVehicles } from '@/src/services/vehicles';
 import { useSessionStore } from '@/src/store/session';
 import type { Vehicle } from '@/src/types/database';
+import { formatPlate } from '@/src/lib/plate';
 
 export default function VehiclesTab() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function VehiclesTab() {
 
   return (
     <>
-    <Screen tab>
+    <Screen tab refreshable>
         <ScreenTitle
           title="Veículos"
           subtitle={isTransporter ? 'Tipo e placa da frota' : 'Veículos dos seus grupos'}
@@ -81,7 +82,7 @@ export default function VehiclesTab() {
               icon="bus-outline"
               glyph="🚐"
               title={vehicle.type}
-              subtitle={vehicle.plate}
+              subtitle={formatPlate(vehicle.plate)}
               onPress={() => openVan(vehicle.id)}
             />
             {isTransporter ? (

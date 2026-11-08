@@ -50,7 +50,7 @@ export default function NewVehicleScreen() {
 
   return (
     <TransporterOnly fallback="/(app)/(tabs)/vehicles">
-    <Screen tab showBack>
+    <Screen tab keyboard showBack>
         <ScreenTitle title="Novo veículo" subtitle="Tipo, placa, lugares e foto" />
         <Text style={styles.label}>Tipo</Text>
         <View style={styles.chips}>
@@ -63,6 +63,7 @@ export default function NewVehicleScreen() {
                 style={[styles.chip, selected && styles.chipOn]}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
+                accessibilityLabel={`Tipo: ${type}`}
               >
                 <Text style={[styles.chipText, selected && styles.chipTextOn]}>
                   {type}

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidPlate, PLATE_ERROR } from '@/src/lib/plate';
 
 export const loginSchema = z.object({
   email: z.string().email('Informe um e-mail válido.'),
@@ -12,6 +13,9 @@ export const signUpSchema = z
     phone: z.string().optional(),
     password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
     confirmPassword: z.string().min(6, 'Confirme a senha.'),
+    acceptTerms: z
+      .boolean()
+      .refine((value) => value, 'Para criar a conta, aceite os Termos e a Política de Privacidade.'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'As senhas não coincidem.',
@@ -38,7 +42,10 @@ export const newPasswordSchema = z
 
 export const vehicleSchema = z.object({
   type: z.string().min(2, 'Informe o tipo do veículo.'),
-  plate: z.string().min(5, 'Informe a placa.'),
+  plate: z
+    .string()
+    .min(1, 'Informe a placa.')
+    .refine(isValidPlate, PLATE_ERROR),
   capacity: z.string().optional(),
 });
 

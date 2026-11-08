@@ -50,7 +50,7 @@ export function MapView({
       showsMyLocationButton={false}
       showsCompass={false}
       showsScale={false}
-      showsPointsOfInterest={false}
+      showsPointsOfInterests={false}
       showsBuildings={false}
       showsTraffic={false}
       toolbarEnabled={false}
