@@ -66,14 +66,27 @@ export function MapView({
           title={marker.title}
         />
       ))}
-      {lines.map((line, index) => (
+      {lines.flatMap((line, index) => [
+        // Contorno branco por baixo, depois a linha da rota.
+        <Polyline
+          key={`route-${index}-casing`}
+          coordinates={line.coordinates}
+          strokeColor="#FFFFFF"
+          strokeWidth={9}
+          lineCap="round"
+          lineJoin="round"
+          zIndex={1}
+        />,
         <Polyline
           key={`route-${index}`}
           coordinates={line.coordinates}
           strokeColor={colors.primary}
-          strokeWidth={4}
-        />
-      ))}
+          strokeWidth={5}
+          lineCap="round"
+          lineJoin="round"
+          zIndex={2}
+        />,
+      ])}
     </MapViewNative>
   );
 }
