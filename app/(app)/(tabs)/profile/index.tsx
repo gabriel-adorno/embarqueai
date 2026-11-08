@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import Constants from 'expo-constants';
 import { Link } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
 import { ConfirmModal } from '@/src/components/ui/ConfirmModal';
@@ -16,6 +17,7 @@ import { useSessionStore } from '@/src/store/session';
 import { notifyError, notifyKey } from '@/src/lib/notify';
 import { changePassword } from '@/src/services/auth';
 import { href } from '@/src/lib/href';
+import { SUPPORT } from '@/src/lib/support';
 
 export default function ProfileTab() {
   const qc = useQueryClient();
@@ -155,6 +157,31 @@ export default function ProfileTab() {
         <View style={styles.gap}>
           <Button label="Sair" variant="danger" onPress={() => void signOut()} />
         </View>
+        {SUPPORT.whatsapp || SUPPORT.email ? (
+          <View style={styles.support}>
+            <Text style={styles.supportTitle}>Precisa de ajuda?</Text>
+            {SUPPORT.whatsapp ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                label="Falar no WhatsApp"
+                onPress={() => void Linking.openURL(`https://wa.me/${SUPPORT.whatsapp}`)}
+              />
+            ) : null}
+            {SUPPORT.email ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                label={`Enviar e-mail para ${SUPPORT.email}`}
+                onPress={() =>
+                  void Linking.openURL(
+                    `mailto:${SUPPORT.email}?subject=${encodeURIComponent('Suporte EmbarqueAI')}`,
+                  )
+                }
+              />
+            ) : null}
+          </View>
+        ) : null}
         <View style={styles.legal}>
           <Link href={href('/legal/privacy')} style={styles.legalLink}>
             Política de Privacidade
@@ -163,6 +190,9 @@ export default function ProfileTab() {
             Termos de Uso
           </Link>
         </View>
+        <Text style={styles.version}>
+          EmbarqueAI · versão {Constants.expoConfig?.version ?? '—'}
+        </Text>
         <View style={styles.gap}>
           <Button
             label="Excluir minha conta"
@@ -191,6 +221,9 @@ export default function ProfileTab() {
 }
 
 const styles = StyleSheet.create({
+  support: { marginTop: 20, gap: 8 },
+  supportTitle: { color: colors.ink, fontWeight: '700', fontSize: 14 },
+  version: { textAlign: 'center', color: colors.textMuted, fontSize: 12, marginTop: 12 },
   legal: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 20 },
   legalLink: { color: colors.primary, fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
   avatar: {

@@ -33,6 +33,7 @@ import { listFollows } from '@/src/services/follows';
 import { formatDay, nextWeekdays, todayInSaoPaulo } from '@/src/lib/day';
 import { href } from '@/src/lib/href';
 import { notifyError, notifyKey } from '@/src/lib/notify';
+import { formatPlate } from '@/src/lib/plate';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -156,7 +157,7 @@ export default function GroupDetailScreen() {
 
   return (
     <>
-    <Screen tab showBack>
+    <Screen tab refreshable showBack>
         <ScreenTitle
           title={query.data?.group.name ?? 'Grupo'}
           subtitle={
@@ -171,7 +172,7 @@ export default function GroupDetailScreen() {
               icon="bus-outline"
               glyph="🚐"
               title={query.data.vehicle?.type ?? 'Van'}
-              subtitle={query.data.vehicle?.plate ?? ''}
+              subtitle={formatPlate(query.data.vehicle?.plate)}
               onPress={() =>
                 router.push(href(`/(app)/(tabs)/groups/van/${query.data.group.vehicle_id}`))
               }
@@ -269,7 +270,7 @@ export default function GroupDetailScreen() {
                       style={[styles.option, selected && styles.optionOn]}
                     >
                       <Text style={[styles.optionText, selected && styles.optionTextOn]}>
-                        {item.type} · {item.plate}
+                        {item.type} · {formatPlate(item.plate)}
                       </Text>
                     </Pressable>
                   );

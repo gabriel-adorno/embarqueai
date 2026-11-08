@@ -88,7 +88,7 @@ export default function PeopleScreen() {
   };
 
   return (
-    <Screen tab>
+    <Screen tab refreshable>
       <ScreenTitle
         title="Pessoas"
         subtitle="Acompanhe quem viaja, ou aceite quem quer acompanhar você."

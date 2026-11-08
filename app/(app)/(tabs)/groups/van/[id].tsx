@@ -8,6 +8,7 @@ import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { ErrorState, LoadingState } from '@/src/components/ui/States';
 import { getProfile } from '@/src/services/profiles';
 import { getVehicle } from '@/src/services/vehicles';
+import { formatPlate } from '@/src/lib/plate';
 
 export default function GroupVanScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,7 +25,7 @@ export default function GroupVanScreen() {
   });
 
   return (
-    <Screen tab showBack>
+    <Screen tab refreshable showBack>
       <ScreenTitle
         title={query.data?.vehicle.type ?? 'Van'}
         subtitle="Dados do veículo"
@@ -37,7 +38,7 @@ export default function GroupVanScreen() {
             icon="bus-outline"
             glyph="🚐"
             title={query.data.vehicle.type}
-            subtitle={`Placa ${query.data.vehicle.plate}`}
+            subtitle={`Placa ${formatPlate(query.data.vehicle.plate)}`}
           />
           <ListRow
             icon="person-outline"

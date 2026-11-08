@@ -17,6 +17,7 @@ import { listVehicles } from '@/src/services/vehicles';
 import { colors } from '@/src/theme/colors';
 import { useSessionStore } from '@/src/store/session';
 import { notifyError, notifyKey } from '@/src/lib/notify';
+import { formatPlate } from '@/src/lib/plate';
 
 type Form = { name: string; vehicle_id: string };
 
@@ -87,7 +88,7 @@ export default function NewGroupScreen() {
               style={[styles.option, selected && styles.optionOn]}
             >
               <Text style={[styles.optionText, selected && styles.optionTextOn]}>
-                {vehicle.type} · {vehicle.plate}
+                {vehicle.type} · {formatPlate(vehicle.plate)}
               </Text>
             </Pressable>
           );

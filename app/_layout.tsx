@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
+import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
 import { ToastHost } from '@/src/components/ui/ToastHost';
 import '@/src/tasks/driverLocation';
 import { queryClient } from '@/src/lib/queryClient';
@@ -45,6 +46,7 @@ export default function RootLayout() {
         <Stack.Screen name="legal/privacy" />
         <Stack.Screen name="legal/terms" />
       </Stack>
+      <OfflineBanner />
       <ToastHost />
     </QueryClientProvider>
   );
