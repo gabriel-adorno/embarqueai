@@ -268,6 +268,8 @@ export async function updateRoute(
     outbound_time?: string | null;
     return_time?: string | null;
     points?: { id?: string; name: string; sort_order: number }[];
+    /** Grupos que devem ficar nesta rota; os demais saem dela. */
+    group_ids?: string[];
   },
 ): Promise<Route> {
   return api<Route>(`/routes/${id}`, { method: 'PATCH', body: JSON.stringify(input) });

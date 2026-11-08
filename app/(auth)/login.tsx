@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -11,34 +11,28 @@ import { Screen } from '@/src/components/ui/Screen';
 import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { href } from '@/src/lib/href';
 import { DEMO_ACCOUNTS } from '@/src/lib/ids';
-import { flashFromAuthError, flashFromCatalog } from '@/src/lib/notify';
+import { flashFromAuthError } from '@/src/lib/notify';
 import { loginSchema } from '@/src/lib/schemas';
 import * as auth from '@/src/services/auth';
 import { colors } from '@/src/theme/colors';
 import { useSessionStore } from '@/src/store/session';
 import type { FlashMessage } from '@/src/store/toast';
-import type { Role } from '@/src/types/database';
 
 type Form = { email: string; password: string };
 
 export default function LoginScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ role?: Role }>();
-  const role: Role = params.role === 'transporter' ? 'transporter' : 'client';
   const setSession = useSessionStore((s) => s.setSession);
   const [banner, setBanner] = useState<FlashMessage | null>(null);
-  const demo = role === 'client' ? DEMO_ACCOUNTS.client : DEMO_ACCOUNTS.transporter;
 
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<Form>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: demo.email,
-      password: demo.password,
-    },
+    defaultValues: { email: '', password: '' },
   });
 
   const onSubmit = handleSubmit(async (values) => {
@@ -46,10 +40,6 @@ export default function LoginScreen() {
     const { data, error } = await auth.signInWithPassword(values);
     if (error || !data.session) {
       setBanner(flashFromAuthError(error));
-      return;
-    }
-    if (data.session.user.user_metadata.role !== role) {
-      setBanner(flashFromCatalog('wrongRole'));
       return;
     }
     await setSession(data.session);
@@ -60,11 +50,7 @@ export default function LoginScreen() {
     <Screen showBack keyboard>
           <ScreenTitle
             title="Entrar"
-            subtitle={
-              role === 'client'
-                ? 'Sua viagem, ou a de quem você acompanha.'
-                : 'Gerencie rotas e embarques.'
-            }
+            subtitle="Passageiros, responsáveis e transportadores entram por aqui."
           />
           {banner ? (
             <AppMessage title={banner.title} body={banner.body} kind={banner.kind} />
@@ -100,7 +86,7 @@ export default function LoginScreen() {
               />
             )}
           />
-          <Link href={`/(auth)/forgot-password?role=${role}`} asChild>
+          <Link href="/(auth)/forgot-password" asChild>
             <Pressable accessibilityRole="link">
               <Text style={styles.link}>Esqueceu a senha?</Text>
             </Pressable>
@@ -108,11 +94,35 @@ export default function LoginScreen() {
           <Button label="Continuar" loading={isSubmitting} onPress={onSubmit} />
           <View style={styles.footer}>
             <Text style={styles.muted}>Não tem uma conta? </Text>
-            <Link href={`/(auth)/sign-up?role=${role}`} asChild>
+            <Link href="/(auth)/sign-up" asChild>
               <Pressable accessibilityRole="link">
                 <Text style={styles.linkInline}>Cadastre-se</Text>
               </Pressable>
             </Link>
+          </View>
+          <View style={styles.demo}>
+            <Text style={styles.demoLabel}>Conta de teste</Text>
+            <View style={styles.demoRow}>
+              {(
+                [
+                  ['Passageiro', DEMO_ACCOUNTS.client],
+                  ['Transportador', DEMO_ACCOUNTS.transporter],
+                ] as const
+              ).map(([label, account]) => (
+                <Pressable
+                  key={label}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Preencher conta de teste: ${label}`}
+                  onPress={() => {
+                    setValue('email', account.email, { shouldValidate: true });
+                    setValue('password', account.password, { shouldValidate: true });
+                  }}
+                  style={({ pressed }) => [styles.demoChip, pressed && styles.demoPressed]}
+                >
+                  <Text style={styles.demoText}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
     </Screen>
   );
@@ -126,6 +136,19 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     marginBottom: 24,
   },
+  demo: { marginTop: 28 },
+  demoLabel: { color: colors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 8 },
+  demoRow: { flexDirection: 'row', gap: 8 },
+  demoChip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  demoPressed: { opacity: 0.7 },
+  demoText: { color: colors.ink, fontWeight: '700', fontSize: 13 },
   footer: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 20 },
   muted: { color: colors.textMuted, fontSize: 15 },
   linkInline: {

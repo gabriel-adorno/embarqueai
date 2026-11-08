@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import Constants from 'expo-constants';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
@@ -15,7 +15,6 @@ import { getProfile, updateProfile } from '@/src/services/profiles';
 import { colors, isDark } from '@/src/theme/colors';
 import { useSessionStore } from '@/src/store/session';
 import { notifyError, notifyKey } from '@/src/lib/notify';
-import { changePassword } from '@/src/services/auth';
 import { href } from '@/src/lib/href';
 import { SUPPORT } from '@/src/lib/support';
 
@@ -27,8 +26,7 @@ export default function ProfileTab() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const role = session?.user.user_metadata.role;
   const userId = session?.user.id;
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
+  const router = useRouter();
 
   const query = useQuery({
     queryKey: ['profile', userId],
@@ -41,20 +39,6 @@ export default function ProfileTab() {
       name: query.data?.name ?? '',
       phone: query.data?.phone ?? '',
     },
-  });
-
-  const passwordMut = useMutation({
-    mutationFn: () => {
-      if (password.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres.');
-      if (password !== confirm) throw new Error('As senhas não coincidem.');
-      return changePassword(userId!, password);
-    },
-    onSuccess: () => {
-      setPassword('');
-      setConfirm('');
-      notifyKey('passwordChanged');
-    },
-    onError: (err: Error) => notifyError(err.message),
   });
 
   const deleteMut = useMutation({
@@ -134,24 +118,13 @@ export default function ProfileTab() {
               loading={mutation.isPending}
               onPress={form.handleSubmit((v) => mutation.mutate(v))}
             />
-            <Input
-              label="Nova senha"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
-            <Input
-              label="Confirmar senha"
-              secureTextEntry
-              value={confirm}
-              onChangeText={setConfirm}
-            />
-            <Button
-              label="Alterar senha"
-              variant="secondary"
-              loading={passwordMut.isPending}
-              onPress={() => passwordMut.mutate()}
-            />
+            <View style={styles.gap}>
+              <Button
+                label="Alterar senha"
+                variant="secondary"
+                onPress={() => router.push(href({ pathname: '/(app)/(tabs)/profile/password' }))}
+              />
+            </View>
           </>
         ) : null}
         <View style={styles.gap}>
