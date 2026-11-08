@@ -997,7 +997,7 @@ gated.post('/trips/:id/boardings', async (c) => {
     const routeName = routes?.[0]?.name ?? 'Rota';
     const name = people?.[0]?.name ?? 'Passageiro';
     const boarded = body.status === 'boarded';
-    const data = { kind: 'boarding', tripId: trip.id, routeId: trip.route_id };
+    const data = { kind: 'boarding', tripId: trip.id, routeId: trip.route_id, url: `/trip/${trip.id}` };
     await sendPush(c.env, [body.user_id], {
       title: boarded ? 'Embarque registrado' : 'Desembarque registrado',
       body: routeName,
@@ -1071,7 +1071,7 @@ gated.post('/trips/:id/position', async (c) => {
         await sendPush(c.env, [...members, ...guardians], {
           title: 'A van está chegando',
           body: `${routes?.[0]?.name ?? 'Rota'}: faltam cerca de ${meters} m`,
-          data: { kind: 'arrival', tripId: item.id, routeId: item.route_id },
+          data: { kind: 'arrival', tripId: item.id, routeId: item.route_id, url: `/trip/${item.id}` },
         });
       }
     });
@@ -1154,7 +1154,7 @@ gated.post('/trips/:id/alerts', async (c) => {
     await sendPush(c.env, [...members, ...guardians], {
       title: 'Aviso do transportador',
       body: message,
-      data: { kind: 'alert', tripId: trip.id, routeId: trip.route_id },
+      data: { kind: 'alert', tripId: trip.id, routeId: trip.route_id, url: `/trip/${trip.id}` },
     });
   });
   return c.json(rows?.[0] ?? { ok: true });

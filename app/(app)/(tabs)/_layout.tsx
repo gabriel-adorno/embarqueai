@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { DriverTracker } from '@/src/components/trip/DriverTracker';
 import { TransporterDesk } from '@/src/components/trip/TransporterDesk';
 import { FamilyNotifier } from '@/src/components/trip/FamilyNotifier';
+import { NotificationObserver } from '@/src/components/trip/NotificationObserver';
 import { FloatingTabBar } from '@/src/components/ui/FloatingTabBar';
 import { colors } from '@/src/theme/colors';
 import { useSessionStore } from '@/src/store/session';
@@ -14,6 +15,7 @@ export default function TabsLayout() {
     <DriverTracker />
     <TransporterDesk />
     <FamilyNotifier />
+    <NotificationObserver />
     <Tabs
       tabBar={(props) => <FloatingTabBar {...props} />}
       safeAreaInsets={{ bottom: 0 }}

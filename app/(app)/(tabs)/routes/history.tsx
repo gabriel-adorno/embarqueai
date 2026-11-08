@@ -50,7 +50,7 @@ export default function TripHistoryScreen() {
           glyph="🕘"
           title={trip.routeName}
           subtitle={formatWhen(trip.started_at, trip.ended_at)}
-          onPress={() => router.push(href(`/(app)/(tabs)/index/trip/${trip.id}`))}
+          onPress={() => router.push(href(`/trip/${trip.id}`))}
         />
       ))}
     </Screen>
