@@ -46,7 +46,9 @@ export async function signUp({
 }: {
   email: string;
   password: string;
-  options: { data: { name: string; role: Role; phone?: string } };
+  options: {
+    data: { name: string; role: Role; phone?: string; terms_version?: string; terms_accepted_at?: string };
+  };
 }): Promise<AuthResponse> {
   if (isRemote()) return remote.signUp({ email, password, options });
   const normalized = normalizeEmail(email);
@@ -242,6 +244,40 @@ export async function changePassword(userId: string, password: string): Promise<
     const cred = db.credentials.find((item) => item.user_id === userId);
     if (!cred) throw new Error('Conta não encontrada.');
     cred.password = password.trim();
+  });
+}
+
+/**
+ * Exclui a conta e os dados ligados a ela.
+ * Transportador com passageiros nos grupos precisa removê-los antes.
+ */
+export async function deleteAccount(userId: string): Promise<void> {
+  if (isRemote()) return remote.deleteMyAccount();
+  await mutateDb((db) => {
+    const profile = db.profiles.find((item) => item.id === userId);
+    if (!profile) throw new Error('Conta não encontrada.');
+    const groupIds = db.groups.filter((g) => g.transporter_id === userId).map((g) => g.id);
+    if (db.group_members.some((m) => groupIds.includes(m.group_id))) {
+      throw new Error('Remova os passageiros ou exclua seus grupos antes de excluir a conta.');
+    }
+    const routeIds = db.routes.filter((r) => r.transporter_id === userId).map((r) => r.id);
+    const tripIds = db.trips
+      .filter((t) => groupIds.includes(t.group_id) || routeIds.includes(t.route_id))
+      .map((t) => t.id);
+    db.trip_positions = db.trip_positions.filter((p) => !tripIds.includes(p.trip_id));
+    db.boardings = db.boardings.filter((b) => !tripIds.includes(b.trip_id) && b.user_id !== userId);
+    db.trip_alerts = db.trip_alerts.filter((a) => !tripIds.includes(a.trip_id));
+    db.trips = db.trips.filter((t) => !tripIds.includes(t.id));
+    db.route_points = db.route_points.filter((p) => !routeIds.includes(p.route_id));
+    db.routes = db.routes.filter((r) => r.transporter_id !== userId);
+    db.groups = db.groups.filter((g) => g.transporter_id !== userId);
+    db.vehicles = db.vehicles.filter((v) => v.transporter_id !== userId);
+    db.group_members = db.group_members.filter((m) => m.user_id !== userId);
+    db.absences = (db.absences ?? []).filter((a) => a.user_id !== userId);
+    db.follows = db.follows.filter((f) => f.guardian_id !== userId && f.passenger_id !== userId);
+    db.trip_alert_replies = db.trip_alert_replies.filter((r) => r.user_id !== userId);
+    db.credentials = db.credentials.filter((c) => c.user_id !== userId);
+    db.profiles = db.profiles.filter((p) => p.id !== userId);
   });
 }
 
