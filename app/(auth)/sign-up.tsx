@@ -31,7 +31,10 @@ type Form = {
 export default function SignUpScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ role?: Role }>();
-  const role: Role = params.role === 'transporter' ? 'transporter' : 'client';
+  const [role, setRole] = useState<Role | null>(
+    params.role === 'transporter' || params.role === 'client' ? params.role : null,
+  );
+  const [roleError, setRoleError] = useState(false);
   const setSession = useSessionStore((s) => s.setSession);
   const [banner, setBanner] = useState<FlashMessage | null>(null);
 
@@ -51,7 +54,8 @@ export default function SignUpScreen() {
     },
   });
 
-  const onSubmit = handleSubmit(async (values) => {
+  const submitForm = handleSubmit(async (values) => {
+    if (!role) return;
     const { data, error } = await auth.signUp({
       email: values.email,
       password: values.password,
@@ -84,12 +88,46 @@ export default function SignUpScreen() {
     router.replace(href('/(app)/(tabs)'));
   });
 
+  const onSubmit = () => {
+    setRoleError(!role);
+    void submitForm();
+  };
+
   return (
     <Screen showBack keyboard>
           <ScreenTitle
             title="Criar conta"
-            subtitle={role === 'client' ? 'Passageiro ou responsável' : 'Transportador'}
+            subtitle="Escolha como você vai usar o app e preencha seus dados."
           />
+          <Text style={styles.label}>Como você vai usar?</Text>
+          <View style={styles.roles}>
+            {ROLES.map((item) => {
+              const on = role === item.value;
+              return (
+                <Pressable
+                  key={item.value}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: on }}
+                  accessibilityLabel={item.title}
+                  onPress={() => {
+                    setRole(item.value);
+                    setRoleError(false);
+                  }}
+                  style={({ pressed }) => [
+                    styles.role,
+                    on && styles.roleOn,
+                    roleError && styles.roleError,
+                    pressed && styles.rolePressed,
+                  ]}
+                >
+                  <Text style={styles.roleGlyph}>{item.glyph}</Text>
+                  <Text style={[styles.roleTitle, on && styles.roleTitleOn]}>{item.title}</Text>
+                  <Text style={[styles.roleSub, on && styles.roleSubOn]}>{item.subtitle}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {roleError ? <Text style={[styles.error, styles.roleErrorText]}>Escolha uma opção.</Text> : null}
           {banner ? (
             <AppMessage title={banner.title} body={banner.body} kind={banner.kind} />
           ) : null}
@@ -205,7 +243,49 @@ export default function SignUpScreen() {
   );
 }
 
+const ROLES: { value: Role; glyph: string; title: string; subtitle: string }[] = [
+  {
+    value: 'client',
+    glyph: '📍',
+    title: 'Passageiro ou responsável',
+    subtitle: 'Acompanho minha viagem ou a de alguém',
+  },
+  {
+    value: 'transporter',
+    glyph: '🚐',
+    title: 'Transportador',
+    subtitle: 'Dirijo e organizo rotas e grupos',
+  },
+];
+
 const styles = StyleSheet.create({
+  label: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 8,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  roles: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  role: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    borderRadius: 18,
+    padding: 14,
+    gap: 4,
+  },
+  roleOn: { borderColor: colors.primary, backgroundColor: colors.primary },
+  roleError: { borderColor: colors.error },
+  rolePressed: { opacity: 0.85 },
+  roleGlyph: { fontSize: 22, marginBottom: 4 },
+  roleTitle: { color: colors.ink, fontWeight: '800', fontSize: 14 },
+  roleTitleOn: { color: colors.white },
+  roleSub: { color: colors.textMuted, fontSize: 12, lineHeight: 16 },
+  roleSubOn: { color: colors.white, opacity: 0.9 },
+  roleErrorText: { marginTop: 0, marginBottom: 12 },
   terms: { marginBottom: 16 },
   checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   box: {
