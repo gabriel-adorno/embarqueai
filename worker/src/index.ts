@@ -462,12 +462,13 @@ gated.post('/vehicles', async (c) => {
   requireTransporter(me);
   const body = await c.req.json<{ type: string; plate: string; capacity?: number; photo?: string }>();
   assertPhoto(body.photo);
+  const plate = await checkPlate(c.env, c.get('token'), me.id, body.plate ?? '');
   const rows = await rest<Vehicle[]>(c.env, c.get('token'), 'vehicles', '', {
     method: 'POST',
     body: JSON.stringify({
       transporter_id: me.id,
       type: body.type,
-      plate: body.plate.toUpperCase(),
+      plate,
       capacity: cleanCapacity(body.capacity),
       photo: body.photo || null,
     }),
@@ -486,9 +487,13 @@ gated.delete('/vehicles/:id', async (c) => {
 });
 
 gated.patch('/vehicles/:id', async (c) => {
-  requireTransporter(c.get('profile'));
+  const me = c.get('profile');
+  requireTransporter(me);
   const body = await c.req.json<{ type?: string; plate?: string; capacity?: number | null; photo?: string | null }>();
   assertPhoto(body.photo);
+  const plate = body.plate
+    ? await checkPlate(c.env, c.get('token'), me.id, body.plate, c.req.param('id'))
+    : null;
   const rows = await rest<Vehicle[]>(
     c.env,
     c.get('token'),
@@ -498,7 +503,7 @@ gated.patch('/vehicles/:id', async (c) => {
       method: 'PATCH',
       body: JSON.stringify({
         ...(body.type ? { type: body.type } : {}),
-        ...(body.plate ? { plate: body.plate.toUpperCase() } : {}),
+        ...(plate ? { plate } : {}),
         capacity: cleanCapacity(body.capacity),
         photo: body.photo || null,
       }),
@@ -1399,6 +1404,25 @@ function cleanCapacity(value: number | null | undefined) {
   const n = Math.round(Number(value));
   if (n < 1 || n > 80) return null;
   return n;
+}
+
+/** Normaliza (ABC1234), valida o formato e impede placa repetida do mesmo transportador. */
+async function checkPlate(env: Env, token: string, transporterId: string, raw: string, exceptId?: string) {
+  const plate = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(plate)) {
+    throw new HTTPException(400, { message: 'Placa inválida. Use o formato ABC-1234 ou ABC1D23.' });
+  }
+  const mine = await rest<{ id: string; plate: string }[]>(
+    env,
+    token,
+    'vehicles',
+    `?transporter_id=eq.${transporterId}&select=id,plate`,
+  );
+  const taken = (mine ?? []).some(
+    (v) => v.id !== exceptId && v.plate.toUpperCase().replace(/[^A-Z0-9]/g, '') === plate,
+  );
+  if (taken) throw new HTTPException(409, { message: 'Você já tem um veículo com essa placa.' });
+  return plate;
 }
 
 function assertPhoto(photo: string | null | undefined) {

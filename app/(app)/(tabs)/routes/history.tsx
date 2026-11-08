@@ -28,7 +28,7 @@ export default function TripHistoryScreen() {
   });
 
   return (
-    <Screen tab showBack>
+    <Screen tab refreshable showBack>
       <ScreenTitle title="Histórico" subtitle="Viagens encerradas nos últimos 30 dias" />
       {query.isLoading ? <LoadingState /> : null}
       {query.isError ? (

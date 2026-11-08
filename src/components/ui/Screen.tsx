@@ -1,7 +1,9 @@
-import type { ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useState, type ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -21,6 +23,8 @@ type Props = {
   tab?: boolean;
   scroll?: boolean;
   keyboard?: boolean;
+  /** Puxar para baixo recarrega os dados da tela (consultas ativas). */
+  refreshable?: boolean;
 };
 
 export function Screen({
@@ -30,7 +34,18 @@ export function Screen({
   tab = false,
   scroll = true,
   keyboard = false,
+  refreshable = false,
 }: Props) {
+  const qc = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await qc.refetchQueries({ type: 'active' });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [qc]);
   const insets = useSafeAreaInsets();
   const paddingBottom = tab ? TAB_SCREEN_BOTTOM : Math.max(insets.bottom, 16) + 24;
 
@@ -50,6 +65,16 @@ export function Screen({
       contentContainerStyle={[styles.pad, { paddingBottom }]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        refreshable ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        ) : undefined
+      }
     >
       {children}
     </ScrollView>

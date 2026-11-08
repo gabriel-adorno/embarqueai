@@ -17,7 +17,7 @@ export default function ReportScreen() {
   });
 
   return (
-    <Screen tab showBack>
+    <Screen tab refreshable showBack>
       <ScreenTitle title="Relatório" subtitle="Viagens encerradas nos últimos 30 dias" />
       {query.isLoading ? <LoadingState /> : null}
       {query.isError ? (
