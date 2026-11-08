@@ -17,6 +17,7 @@ import {
   deleteGroup,
   getGroup,
   listAbsences,
+  listUpcomingAbsences,
   listGroupMembers,
   removeGroupMember,
   setAbsence,
@@ -29,6 +30,7 @@ import { getVehicle, listVehicles } from '@/src/services/vehicles';
 import { useSessionStore } from '@/src/store/session';
 import { colors } from '@/src/theme/colors';
 import { listFollows } from '@/src/services/follows';
+import { formatDay, nextWeekdays, todayInSaoPaulo } from '@/src/lib/day';
 import { href } from '@/src/lib/href';
 import { notifyError, notifyKey } from '@/src/lib/notify';
 
@@ -48,11 +50,12 @@ export default function GroupDetailScreen() {
     queryFn: async () => {
       const group = await getGroup(id);
       if (!group) throw new Error('Grupo não encontrado.');
-      const [vehicle, transporter, members, absences, points, vehicles, follows] = await Promise.all([
+      const [vehicle, transporter, members, absences, upcoming, points, vehicles, follows] = await Promise.all([
         getVehicle(group.vehicle_id),
         getProfile(group.transporter_id),
         listGroupMembers(group.id).catch(() => []),
         listAbsences(group.id),
+        listUpcomingAbsences(group.id).catch(() => []),
         group.route_id ? listRoutePoints(group.route_id) : Promise.resolve([]),
         isTransporter && user ? listVehicles(user.id) : Promise.resolve([]),
         !isTransporter && user
@@ -71,6 +74,7 @@ export default function GroupDetailScreen() {
         vehicle,
         transporter,
         absences,
+        upcoming,
         points,
         vehicles,
       };
@@ -106,6 +110,25 @@ export default function GroupDetailScreen() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['group', id] }),
     onError: (err: Error) => notifyError(err.message),
   });
+
+  const today = todayInSaoPaulo();
+  const myUpcoming = new Set(
+    (query.data?.upcoming ?? [])
+      .filter((item) => item.user_id === user?.id && item.absent_on > today)
+      .map((item) => item.absent_on),
+  );
+  const scheduleDays = nextWeekdays(today, 15);
+
+  const scheduleMut = useMutation({
+    mutationFn: (input: { day: string; absent: boolean }) =>
+      input.absent ? clearAbsence(id, user!.id, input.day) : setAbsence(id, user!.id, input.day),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['group', id] }),
+    onError: (err: Error) => notifyError(err.message),
+  });
+
+  const memberName = (userId: string) =>
+    query.data?.members.find((member) => member.user_id === userId)?.profile.name ?? 'Passageiro';
+  const futureAbsences = (query.data?.upcoming ?? []).filter((item) => item.absent_on > today);
 
   const addMut = useMutation({
     mutationFn: () => addGroupMemberByEmail(id, email),
@@ -207,6 +230,32 @@ export default function GroupDetailScreen() {
                 onPress={() => absenceMut.mutate()}
               />
             ) : null}
+            {!isTransporter && query.data.isMember ? (
+              <View style={styles.block}>
+                <Text style={styles.label}>Programar ausência</Text>
+                <Text style={styles.hint}>Toque nos dias em que você não vai.</Text>
+                <View style={styles.points}>
+                  {scheduleDays.map((day) => {
+                    const absent = myUpcoming.has(day);
+                    return (
+                      <Pressable
+                        key={day}
+                        disabled={scheduleMut.isPending}
+                        onPress={() => scheduleMut.mutate({ day, absent })}
+                        style={[styles.chip, absent && styles.chipAbsent]}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: absent }}
+                        accessibilityLabel={`${formatDay(day)}${absent ? ', ausente' : ''}`}
+                      >
+                        <Text style={[styles.chipText, absent && styles.chipTextOn]}>
+                          {formatDay(day)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
             {isTransporter ? (
               <>
                 <Input label="Nome do grupo" value={groupName} onChangeText={setGroupName} />
@@ -279,6 +328,16 @@ export default function GroupDetailScreen() {
                     />
                   </View>
                 ))}
+                {futureAbsences.length ? (
+                  <View style={styles.block}>
+                    <Text style={styles.label}>Próximas ausências</Text>
+                    {futureAbsences.map((item) => (
+                      <Text key={item.id} style={styles.absenceRow}>
+                        {formatDay(item.absent_on)} · {memberName(item.user_id)}
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
                 <Button
                   label="Excluir grupo"
                   variant="danger"
@@ -354,4 +413,7 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontWeight: '700', color: colors.ink, fontSize: 13 },
   chipTextOn: { color: colors.white },
+  chipAbsent: { backgroundColor: colors.danger, borderColor: colors.danger },
+  hint: { color: colors.textMuted, fontSize: 12, marginTop: -4, marginBottom: 8 },
+  absenceRow: { color: colors.ink, fontSize: 14, paddingVertical: 4 },
 });

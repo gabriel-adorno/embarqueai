@@ -861,7 +861,18 @@ gated.delete('/groups/:id/members/:userId', async (c) => {
 });
 
 gated.get('/groups/:id/absences', async (c) => {
-  const day = c.req.query('date') || todayInSaoPaulo();
+  const from = c.req.query('from');
+  if (from) {
+    const start = absenceDay(from);
+    const rows = await rest<Absence[]>(
+      c.env,
+      c.get('token'),
+      'absences',
+      `?group_id=eq.${c.req.param('id')}&absent_on=gte.${start}&absent_on=lte.${addDays(todayInSaoPaulo(), MAX_ABSENCE_DAYS)}&order=absent_on.asc`,
+    );
+    return c.json(Array.isArray(rows) ? rows : []);
+  }
+  const day = absenceDay(c.req.query('date'));
   const rows = await rest<Absence[]>(
     c.env,
     c.get('token'),
@@ -880,8 +891,8 @@ gated.post('/groups/:id/absences', async (c) => {
   const groups = await rest<Group[]>(c.env, c.get('token'), 'groups', `?id=eq.${groupId}`);
   const group = groups[0];
   if (!group) throw new HTTPException(404, { message: 'Grupo não encontrado.' });
-  await assertRouteNotStarted(c.env, c.get('token'), group);
-  const day = todayInSaoPaulo();
+  const day = absenceDay(c.req.query('date'));
+  if (day === todayInSaoPaulo()) await assertRouteNotStarted(c.env, c.get('token'), group);
   try {
     await rest(c.env, c.get('token'), 'absences', '', {
       method: 'POST',
@@ -896,7 +907,7 @@ gated.post('/groups/:id/absences', async (c) => {
 
 gated.delete('/groups/:id/absences', async (c) => {
   const me = c.get('profile');
-  const day = todayInSaoPaulo();
+  const day = absenceDay(c.req.query('date'));
   await rest(
     c.env,
     c.get('token'),
@@ -1373,6 +1384,27 @@ async function clientWatchIds(env: Env, token: string, meId: string) {
 
 function todayInSaoPaulo() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+}
+
+const MAX_ABSENCE_DAYS = 60;
+
+function addDays(day: string, amount: number) {
+  const date = new Date(`${day}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Data da ausência: hoje por padrão; aceita AAAA-MM-DD de hoje até 60 dias. */
+function absenceDay(raw: string | undefined) {
+  const today = todayInSaoPaulo();
+  if (!raw) return today;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw) || Number.isNaN(Date.parse(`${raw}T12:00:00Z`)) || addDays(raw, 0) !== raw) {
+    throw new HTTPException(400, { message: 'Data inválida.' });
+  }
+  if (raw < today || raw > addDays(today, MAX_ABSENCE_DAYS)) {
+    throw new HTTPException(400, { message: 'Escolha uma data entre hoje e os próximos 60 dias.' });
+  }
+  return raw;
 }
 
 async function assertRouteNotStarted(env: Env, token: string, group: Group) {
