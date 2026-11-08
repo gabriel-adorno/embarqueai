@@ -28,7 +28,7 @@ export default function TripHistoryScreen() {
   });
 
   return (
-    <Screen tab showBack>
+    <Screen tab refreshable showBack>
       <ScreenTitle title="Histórico" subtitle="Viagens encerradas nos últimos 30 dias" />
       {query.isLoading ? <LoadingState /> : null}
       {query.isError ? (
@@ -50,7 +50,7 @@ export default function TripHistoryScreen() {
           glyph="🕘"
           title={trip.routeName}
           subtitle={formatWhen(trip.started_at, trip.ended_at)}
-          onPress={() => router.push(href(`/(app)/(tabs)/index/trip/${trip.id}`))}
+          onPress={() => router.push(href(`/trip/${trip.id}`))}
         />
       ))}
     </Screen>

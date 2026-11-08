@@ -13,6 +13,8 @@ type SessionState = {
   hydrate: () => Promise<void>;
   setSession: (session: AuthSession | null) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Exclui a conta no servidor e limpa a sessão local. */
+  deleteAccount: () => Promise<void>;
 };
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -60,7 +62,18 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
     set({ session });
   },
+  deleteAccount: async () => {
+    const userId = get().session?.user.id;
+    if (!userId) return;
+    await authService.deleteAccount(userId);
+    // O token já sumiu do banco (cascade); aqui só limpa o registro local.
+    const { unregisterPushToken } = await import('@/src/lib/push');
+    await unregisterPushToken();
+    await get().setSession(null);
+  },
   signOut: async () => {
+    const { unregisterPushToken } = await import('@/src/lib/push');
+    await unregisterPushToken();
     await authService.signOut();
     await get().setSession(null);
   },

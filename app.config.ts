@@ -1,6 +1,7 @@
 import type { ExpoConfig } from 'expo/config';
 
 const googleKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
+const easProjectId = process.env.EAS_PROJECT_ID?.trim() ?? '';
 const apiUrl =
   process.env.EXPO_PUBLIC_API_URL ??
   'https://embarqueai-api.gabrielviniciusadorno.workers.dev';
@@ -22,9 +23,10 @@ const config: ExpoConfig = {
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'embarqueai',
-  userInterfaceStyle: 'light',
+  userInterfaceStyle: 'automatic',
   extra: {
     apiUrl,
+    ...(easProjectId ? { eas: { projectId: easProjectId } } : {}),
   },
   ios: {
     supportsTablet: true,

@@ -117,7 +117,7 @@ export default function RoutesTab() {
 
   return (
     <>
-    <Screen tab>
+    <Screen tab refreshable>
         <ScreenTitle
           title="Rotas"
           subtitle={

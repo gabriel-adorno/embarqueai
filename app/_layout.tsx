@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
+import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
 import { ToastHost } from '@/src/components/ui/ToastHost';
 import '@/src/tasks/driverLocation';
 import { queryClient } from '@/src/lib/queryClient';
@@ -37,12 +38,15 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <StatusBar style="light" />
+      <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(app)" />
+        <Stack.Screen name="legal/privacy" />
+        <Stack.Screen name="legal/terms" />
       </Stack>
+      <OfflineBanner />
       <ToastHost />
     </QueryClientProvider>
   );

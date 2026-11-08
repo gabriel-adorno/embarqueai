@@ -4,7 +4,7 @@ import { colors } from '@/src/theme/colors';
 
 export function Atmosphere() {
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, styles.passThrough]}>
       <View style={styles.orbA} />
       <View style={styles.orbB} />
       <View style={styles.orbC} />
@@ -13,6 +13,7 @@ export function Atmosphere() {
 }
 
 const styles = StyleSheet.create({
+  passThrough: { pointerEvents: 'none' },
   orbA: {
     position: 'absolute',
     top: -80,

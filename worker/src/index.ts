@@ -5,6 +5,14 @@ import { HTTPException } from 'hono/http-exception';
 import { interpolatePath, remainingAlong, type LatLng } from './geo';
 import { directions, geocodeAddress } from './maps';
 import {
+  background,
+  guardiansOf,
+  presentMembers,
+  removeToken,
+  saveToken,
+  sendPush,
+} from './push';
+import {
   adminToken,
   authFetch,
   getAuthUser,
@@ -64,7 +72,10 @@ type Trip = {
   status: 'in_progress' | 'ended';
   leg?: 'outbound' | 'return' | null;
   polyline: LatLng[];
+  arrival_notified_at?: string | null;
 };
+
+const ARRIVAL_M = 800;
 
 type PositionRow = {
   trip_id: string;
@@ -132,7 +143,9 @@ app.post('/auth/sign-up', async (c) => {
   const body = await c.req.json<{
     email: string;
     password: string;
-    options?: { data?: { name?: string; role?: Role; phone?: string } };
+    options?: {
+      data?: { name?: string; role?: Role; phone?: string; terms_version?: string; terms_accepted_at?: string };
+    };
   }>();
   const res = await authFetch(c.env, '/signup', {
     method: 'POST',
@@ -359,6 +372,45 @@ gated.patch('/profile/me', async (c) => {
   return c.json(rows[0]);
 });
 
+gated.delete('/profile/me', async (c) => {
+  const me = c.get('profile');
+  const admin = adminToken(c.env);
+  if (me.role === 'transporter') {
+    const groups = await rest<{ id: string }[]>(
+      c.env,
+      admin,
+      'groups',
+      `?transporter_id=eq.${me.id}&select=id`,
+    );
+    const ids = (groups ?? []).map((group) => group.id);
+    if (ids.length) {
+      const members = await rest<{ user_id: string }[]>(
+        c.env,
+        admin,
+        'group_members',
+        `?group_id=in.(${ids.join(',')})&select=user_id&limit=1`,
+      );
+      if (members?.length) {
+        throw new HTTPException(409, {
+          message: 'Remova os passageiros ou exclua seus grupos antes de excluir a conta.',
+        });
+      }
+      // Por garantia, apaga os grupos (já vazios) antes; groups tem restrict com vehicles/routes.
+      await rest(c.env, admin, 'groups', `?transporter_id=eq.${me.id}`, { method: 'DELETE' });
+    }
+  }
+  // Apagar o usuário do Auth apaga em cascata o perfil e os dados ligados a ele.
+  const res = await fetch(`${c.env.SUPABASE_URL}/auth/v1/admin/users/${me.id}`, {
+    method: 'DELETE',
+    headers: { apikey: admin, Authorization: `Bearer ${admin}` },
+  });
+  if (!res.ok) {
+    console.warn('delete account: auth respondeu', res.status, await res.text());
+    throw new HTTPException(500, { message: 'Não foi possível excluir a conta. Tente de novo.' });
+  }
+  return c.json({ ok: true });
+});
+
 gated.get('/profile/:id', async (c) => {
   const rows = await rest<Profile[]>(
     c.env,
@@ -367,6 +419,22 @@ gated.get('/profile/:id', async (c) => {
     `?id=eq.${c.req.param('id')}&select=*`,
   );
   return c.json(rows[0] ?? null);
+});
+
+gated.post('/push/token', async (c) => {
+  const body = await c.req.json<{ token?: string; platform?: string }>();
+  const token = body.token?.trim() ?? '';
+  if (!/^Expo(nent)?PushToken\[.+\]$/.test(token)) {
+    throw new HTTPException(400, { message: 'Token de notificação inválido.' });
+  }
+  await saveToken(c.env, c.get('profile').id, token, body.platform ?? null);
+  return c.json({ ok: true });
+});
+
+gated.delete('/push/token', async (c) => {
+  const body = await c.req.json<{ token?: string }>();
+  if (body.token) await removeToken(c.env, c.get('profile').id, body.token);
+  return c.json({ ok: true });
 });
 
 gated.get('/vehicles', async (c) => {
@@ -394,12 +462,13 @@ gated.post('/vehicles', async (c) => {
   requireTransporter(me);
   const body = await c.req.json<{ type: string; plate: string; capacity?: number; photo?: string }>();
   assertPhoto(body.photo);
+  const plate = await checkPlate(c.env, c.get('token'), me.id, body.plate ?? '');
   const rows = await rest<Vehicle[]>(c.env, c.get('token'), 'vehicles', '', {
     method: 'POST',
     body: JSON.stringify({
       transporter_id: me.id,
       type: body.type,
-      plate: body.plate.toUpperCase(),
+      plate,
       capacity: cleanCapacity(body.capacity),
       photo: body.photo || null,
     }),
@@ -418,9 +487,13 @@ gated.delete('/vehicles/:id', async (c) => {
 });
 
 gated.patch('/vehicles/:id', async (c) => {
-  requireTransporter(c.get('profile'));
+  const me = c.get('profile');
+  requireTransporter(me);
   const body = await c.req.json<{ type?: string; plate?: string; capacity?: number | null; photo?: string | null }>();
   assertPhoto(body.photo);
+  const plate = body.plate
+    ? await checkPlate(c.env, c.get('token'), me.id, body.plate, c.req.param('id'))
+    : null;
   const rows = await rest<Vehicle[]>(
     c.env,
     c.get('token'),
@@ -430,7 +503,7 @@ gated.patch('/vehicles/:id', async (c) => {
       method: 'PATCH',
       body: JSON.stringify({
         ...(body.type ? { type: body.type } : {}),
-        ...(body.plate ? { plate: body.plate.toUpperCase() } : {}),
+        ...(plate ? { plate } : {}),
         capacity: cleanCapacity(body.capacity),
         photo: body.photo || null,
       }),
@@ -834,7 +907,18 @@ gated.delete('/groups/:id/members/:userId', async (c) => {
 });
 
 gated.get('/groups/:id/absences', async (c) => {
-  const day = c.req.query('date') || todayInSaoPaulo();
+  const from = c.req.query('from');
+  if (from) {
+    const start = absenceDay(from);
+    const rows = await rest<Absence[]>(
+      c.env,
+      c.get('token'),
+      'absences',
+      `?group_id=eq.${c.req.param('id')}&absent_on=gte.${start}&absent_on=lte.${addDays(todayInSaoPaulo(), MAX_ABSENCE_DAYS)}&order=absent_on.asc`,
+    );
+    return c.json(Array.isArray(rows) ? rows : []);
+  }
+  const day = absenceDay(c.req.query('date'));
   const rows = await rest<Absence[]>(
     c.env,
     c.get('token'),
@@ -853,8 +937,8 @@ gated.post('/groups/:id/absences', async (c) => {
   const groups = await rest<Group[]>(c.env, c.get('token'), 'groups', `?id=eq.${groupId}`);
   const group = groups[0];
   if (!group) throw new HTTPException(404, { message: 'Grupo não encontrado.' });
-  await assertRouteNotStarted(c.env, c.get('token'), group);
-  const day = todayInSaoPaulo();
+  const day = absenceDay(c.req.query('date'));
+  if (day === todayInSaoPaulo()) await assertRouteNotStarted(c.env, c.get('token'), group);
   try {
     await rest(c.env, c.get('token'), 'absences', '', {
       method: 'POST',
@@ -869,7 +953,7 @@ gated.post('/groups/:id/absences', async (c) => {
 
 gated.delete('/groups/:id/absences', async (c) => {
   const me = c.get('profile');
-  const day = todayInSaoPaulo();
+  const day = absenceDay(c.req.query('date'));
   await rest(
     c.env,
     c.get('token'),
@@ -962,6 +1046,26 @@ gated.post('/trips/:id/boardings', async (c) => {
       recorded_at: new Date().toISOString(),
     }),
   });
+  background(c.executionCtx, async () => {
+    const [routes, people] = await Promise.all([
+      rest<{ name: string }[]>(c.env, adminToken(c.env), 'routes', `?id=eq.${trip.route_id}&select=name`),
+      rest<{ name: string }[]>(c.env, adminToken(c.env), 'profiles', `?id=eq.${body.user_id}&select=name`),
+    ]);
+    const routeName = routes?.[0]?.name ?? 'Rota';
+    const name = people?.[0]?.name ?? 'Passageiro';
+    const boarded = body.status === 'boarded';
+    const data = { kind: 'boarding', tripId: trip.id, routeId: trip.route_id, url: `/trip/${trip.id}` };
+    await sendPush(c.env, [body.user_id], {
+      title: boarded ? 'Embarque registrado' : 'Desembarque registrado',
+      body: routeName,
+      data,
+    });
+    await sendPush(c.env, await guardiansOf(c.env, [body.user_id]), {
+      title: boarded ? `${name} embarcou` : `${name} desembarcou`,
+      body: routeName,
+      data,
+    });
+  });
   return c.json(rows?.[0] ?? { ok: true });
 });
 
@@ -984,6 +1088,7 @@ gated.post('/trips/:id/position', async (c) => {
   const targets = siblings.length ? siblings : [trip];
   const recorded_at = new Date().toISOString();
   let current: PositionRow | null = null;
+  const arriving: { trip: Trip; remaining: number }[] = [];
   for (const item of targets) {
     const poly: LatLng[] = Array.isArray(item.polyline) ? item.polyline : [];
     const row = await insertPosition(c.env, c.get('token'), {
@@ -995,6 +1100,38 @@ gated.post('/trips/:id/position', async (c) => {
       source: 'gps',
     });
     if (item.id === trip.id) current = row;
+    if (row?.remaining_m != null && row.remaining_m < ARRIVAL_M && !item.arrival_notified_at) {
+      arriving.push({ trip: item, remaining: row.remaining_m });
+    }
+  }
+  if (arriving.length) {
+    background(c.executionCtx, async () => {
+      for (const { trip: item, remaining } of arriving) {
+        // Marca antes de enviar; só quem conseguir marcar envia (evita repetir).
+        const marked = await rest<Trip[]>(
+          c.env,
+          adminToken(c.env),
+          'trips',
+          `?id=eq.${item.id}&arrival_notified_at=is.null`,
+          { method: 'PATCH', body: JSON.stringify({ arrival_notified_at: new Date().toISOString() }) },
+        );
+        if (!marked?.length) continue;
+        const routes = await rest<{ name: string }[]>(
+          c.env,
+          adminToken(c.env),
+          'routes',
+          `?id=eq.${item.route_id}&select=name`,
+        );
+        const members = await presentMembers(c.env, item.group_id);
+        const guardians = await guardiansOf(c.env, members);
+        const meters = Math.max(100, Math.round(remaining / 100) * 100);
+        await sendPush(c.env, [...members, ...guardians], {
+          title: 'A van está chegando',
+          body: `${routes?.[0]?.name ?? 'Rota'}: faltam cerca de ${meters} m`,
+          data: { kind: 'arrival', tripId: item.id, routeId: item.route_id, url: `/trip/${item.id}` },
+        });
+      }
+    });
   }
   return c.json(current);
 });
@@ -1068,6 +1205,15 @@ gated.post('/trips/:id/alerts', async (c) => {
     '',
     { method: 'POST', body: JSON.stringify({ trip_id: trip.id, message }) },
   );
+  background(c.executionCtx, async () => {
+    const members = await presentMembers(c.env, trip.group_id);
+    const guardians = await guardiansOf(c.env, members);
+    await sendPush(c.env, [...members, ...guardians], {
+      title: 'Aviso do transportador',
+      body: message,
+      data: { kind: 'alert', tripId: trip.id, routeId: trip.route_id, url: `/trip/${trip.id}` },
+    });
+  });
   return c.json(rows?.[0] ?? { ok: true });
 });
 
@@ -1260,6 +1406,25 @@ function cleanCapacity(value: number | null | undefined) {
   return n;
 }
 
+/** Normaliza (ABC1234), valida o formato e impede placa repetida do mesmo transportador. */
+async function checkPlate(env: Env, token: string, transporterId: string, raw: string, exceptId?: string) {
+  const plate = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(plate)) {
+    throw new HTTPException(400, { message: 'Placa inválida. Use o formato ABC-1234 ou ABC1D23.' });
+  }
+  const mine = await rest<{ id: string; plate: string }[]>(
+    env,
+    token,
+    'vehicles',
+    `?transporter_id=eq.${transporterId}&select=id,plate`,
+  );
+  const taken = (mine ?? []).some(
+    (v) => v.id !== exceptId && v.plate.toUpperCase().replace(/[^A-Z0-9]/g, '') === plate,
+  );
+  if (taken) throw new HTTPException(409, { message: 'Você já tem um veículo com essa placa.' });
+  return plate;
+}
+
 function assertPhoto(photo: string | null | undefined) {
   if (photo && photo.length > 280_000) {
     throw new HTTPException(400, { message: 'A foto ficou grande demais. Escolha outra.' });
@@ -1284,6 +1449,27 @@ async function clientWatchIds(env: Env, token: string, meId: string) {
 
 function todayInSaoPaulo() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+}
+
+const MAX_ABSENCE_DAYS = 60;
+
+function addDays(day: string, amount: number) {
+  const date = new Date(`${day}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Data da ausência: hoje por padrão; aceita AAAA-MM-DD de hoje até 60 dias. */
+function absenceDay(raw: string | undefined) {
+  const today = todayInSaoPaulo();
+  if (!raw) return today;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw) || Number.isNaN(Date.parse(`${raw}T12:00:00Z`)) || addDays(raw, 0) !== raw) {
+    throw new HTTPException(400, { message: 'Data inválida.' });
+  }
+  if (raw < today || raw > addDays(today, MAX_ABSENCE_DAYS)) {
+    throw new HTTPException(400, { message: 'Escolha uma data entre hoje e os próximos 60 dias.' });
+  }
+  return raw;
 }
 
 async function assertRouteNotStarted(env: Env, token: string, group: Group) {

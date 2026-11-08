@@ -34,6 +34,7 @@ type MapLibreMap = {
   removeLayer: (id: string) => void;
   removeSource: (id: string) => void;
   on: (event: string, cb: () => void) => void;
+  setPadding: (padding: { top: number; right: number; bottom: number; left: number }) => void;
 };
 
 type MapLibreNs = {
@@ -316,8 +317,8 @@ export function MapView(props: Props) {
 
 const styles = StyleSheet.create({
   map: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     overflow: 'hidden',
-    backgroundColor: '#f4f4f2',
+    backgroundColor: colors.mapBackground,
   },
 });

@@ -11,7 +11,7 @@ type Props = {
 export function MapTopBar({ children }: Props) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.wrap, { top: insets.top + 8 }]} pointerEvents="box-none">
+    <View style={[styles.wrap, { top: insets.top + 8 }]}>
       <View style={styles.card}>{children}</View>
     </View>
   );
@@ -19,6 +19,7 @@ export function MapTopBar({ children }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
+    pointerEvents: 'box-none',
     position: 'absolute',
     left: 16,
     right: 16,
@@ -26,15 +27,11 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: colors.glass,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(18, 21, 26, 0.08)',
-    shadowColor: '#0B1220',
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    borderColor: colors.hairline,
+    boxShadow: '0px 8px 18px rgba(11, 18, 32, 0.12)',
   },
 });

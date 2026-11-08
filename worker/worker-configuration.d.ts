@@ -4,6 +4,8 @@ interface Env {
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   GOOGLE_MAPS_SERVER_KEY: string;
+  /** Opcional: só se o "Enhanced Push Security" estiver ligado no Expo. */
+  EXPO_ACCESS_TOKEN?: string;
 }
 
 declare namespace Cloudflare {
@@ -12,5 +14,6 @@ declare namespace Cloudflare {
     SUPABASE_ANON_KEY: string;
     SUPABASE_SERVICE_ROLE_KEY: string;
     GOOGLE_MAPS_SERVER_KEY: string;
+    EXPO_ACCESS_TOKEN?: string;
   }
 }

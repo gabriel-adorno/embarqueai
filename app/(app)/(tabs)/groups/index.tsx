@@ -12,6 +12,7 @@ import { listGroupsForClient, listGroupsForTransporter } from '@/src/services/gr
 import { getVehicle } from '@/src/services/vehicles';
 import { href } from '@/src/lib/href';
 import { useSessionStore } from '@/src/store/session';
+import { formatPlate } from '@/src/lib/plate';
 
 export default function GroupsTab() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function GroupsTab() {
   );
 
   return (
-    <Screen tab>
+    <Screen tab refreshable>
         <ScreenTitle
           title="Grupos"
           subtitle={
@@ -69,7 +70,7 @@ export default function GroupsTab() {
             icon="people-outline"
             glyph="🚐"
             title={group.name}
-            subtitle={`${group.vehicle?.type ?? ''} · ${group.vehicle?.plate ?? ''}`}
+            subtitle={`${group.vehicle?.type ?? ''} · ${formatPlate(group.vehicle?.plate)}`}
             onPress={() =>
               router.push(href({ pathname: '/(app)/(tabs)/groups/[id]', params: { id: group.id } }))
             }

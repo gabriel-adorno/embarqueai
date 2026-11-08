@@ -10,12 +10,14 @@ import { Input } from '@/src/components/ui/Input';
 import { Screen } from '@/src/components/ui/Screen';
 import { ScreenTitle } from '@/src/components/ui/ScreenTitle';
 import { EmptyState, LoadingState } from '@/src/components/ui/States';
+import { href } from '@/src/lib/href';
 import { groupSchema } from '@/src/lib/schemas';
 import { createGroup } from '@/src/services/groups';
 import { listVehicles } from '@/src/services/vehicles';
 import { colors } from '@/src/theme/colors';
 import { useSessionStore } from '@/src/store/session';
 import { notifyError, notifyKey } from '@/src/lib/notify';
+import { formatPlate } from '@/src/lib/plate';
 
 type Form = { name: string; vehicle_id: string };
 
@@ -43,17 +45,17 @@ export default function NewGroupScreen() {
         vehicle_id: values.vehicle_id,
         transporter_id: user!.id,
       }),
-    onSuccess: () => {
+    onSuccess: (group) => {
       void qc.invalidateQueries({ queryKey: ['groups'] });
       notifyKey('groupCreated');
-      router.back();
+      router.replace(href({ pathname: '/(app)/(tabs)/groups/[id]', params: { id: group.id } }));
     },
     onError: (err: Error) => notifyError(err.message),
   });
 
   return (
     <TransporterOnly fallback="/(app)/(tabs)/groups">
-    <Screen tab showBack>
+    <Screen tab keyboard showBack>
         <ScreenTitle
           title="Novo grupo"
           subtitle="Depois adicione os passageiros. A rota é escolhida ao criar a rota."
@@ -81,12 +83,15 @@ export default function NewGroupScreen() {
           const selected = form.watch('vehicle_id') === vehicle.id;
           return (
             <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: selected }}
+              accessibilityLabel={`${vehicle.type} ${formatPlate(vehicle.plate)}`}
               key={vehicle.id}
               onPress={() => form.setValue('vehicle_id', vehicle.id)}
               style={[styles.option, selected && styles.optionOn]}
             >
               <Text style={[styles.optionText, selected && styles.optionTextOn]}>
-                {vehicle.type} · {vehicle.plate}
+                {vehicle.type} · {formatPlate(vehicle.plate)}
               </Text>
             </Pressable>
           );
