@@ -640,14 +640,54 @@ gated.post('/routes', async (c) => {
 });
 
 gated.patch('/routes/:id', async (c) => {
-  requireTransporter(c.get('profile'));
+  const me = c.get('profile');
+  requireTransporter(me);
   const routeId = c.req.param('id');
   const body = await c.req.json<{
     name?: string;
     outbound_time?: string | null;
     return_time?: string | null;
     points?: { id?: string; name: string; sort_order: number }[];
+    /** Grupos que devem ficar nesta rota; os demais saem dela. */
+    group_ids?: string[];
   }>();
+
+  // Grupos: valida tudo antes de gravar qualquer coisa.
+  let groupChanges: { id: string; route_id: string | null }[] = [];
+  if (Array.isArray(body.group_ids)) {
+    const wanted = new Set(body.group_ids.filter(Boolean));
+    const mine = await rest<Group[]>(
+      c.env,
+      c.get('token'),
+      'groups',
+      `?transporter_id=eq.${me.id}&select=id,route_id`,
+    );
+    for (const id of wanted) {
+      if (!mine.some((group) => group.id === id)) {
+        throw new HTTPException(400, { message: 'Grupo inválido.' });
+      }
+    }
+    const changing = mine.filter((group) => wanted.has(group.id) !== (group.route_id === routeId));
+    if (changing.length) {
+      const affected = [
+        ...new Set([routeId, ...changing.map((group) => group.route_id).filter((id): id is string => Boolean(id))]),
+      ];
+      const live = await rest<Trip[]>(
+        c.env,
+        c.get('token'),
+        'trips',
+        `?route_id=in.(${affected.join(',')})&status=eq.in_progress&limit=1`,
+      );
+      if (live[0]) {
+        throw new HTTPException(400, { message: 'Encerre o trajeto antes de trocar os grupos da rota.' });
+      }
+    }
+    groupChanges = changing.map((group) => ({
+      id: group.id,
+      route_id: wanted.has(group.id) ? routeId : null,
+    }));
+  }
+
   const rows = await rest<RouteRow[]>(c.env, c.get('token'), 'routes', `?id=eq.${routeId}`, {
     method: 'PATCH',
     body: JSON.stringify({
@@ -701,6 +741,12 @@ gated.patch('/routes/:id', async (c) => {
         }),
       });
     }
+  }
+  for (const change of groupChanges) {
+    await rest(c.env, c.get('token'), 'groups', `?id=eq.${change.id}&transporter_id=eq.${me.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ route_id: change.route_id }),
+    });
   }
   return c.json(rows[0]);
 });

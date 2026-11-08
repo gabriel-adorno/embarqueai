@@ -87,6 +87,8 @@ export async function updateRoute(
     outbound_time?: string | null;
     return_time?: string | null;
     points?: { id?: string; name: string; sort_order: number }[];
+    /** Grupos que devem ficar nesta rota; os demais saem dela. */
+    group_ids?: string[];
   },
 ): Promise<Route> {
   if (isRemote()) return remote.updateRoute(id, input);
@@ -101,6 +103,22 @@ export async function updateRoute(
   await mutateDb((db) => {
     const route = db.routes.find((item) => item.id === id);
     if (!route) throw new Error('Rota não encontrada.');
+    // Grupos: valida antes de alterar qualquer coisa (o mock muda a memória direto).
+    let groupChanges: { group: (typeof db.groups)[number]; routeId: string | null }[] = [];
+    if (input.group_ids) {
+      const wanted = new Set(input.group_ids);
+      const mine = db.groups.filter((group) => group.transporter_id === route.transporter_id);
+      if ([...wanted].some((gid) => !mine.some((group) => group.id === gid))) {
+        throw new Error('Grupo inválido.');
+      }
+      const changing = mine.filter((group) => wanted.has(group.id) !== (group.route_id === id));
+      const affected = new Set([id, ...changing.map((group) => group.route_id).filter(Boolean)]);
+      if (changing.length && db.trips.some((trip) => affected.has(trip.route_id) && trip.status === 'in_progress')) {
+        throw new Error('Encerre o trajeto antes de trocar os grupos da rota.');
+      }
+      groupChanges = changing.map((group) => ({ group, routeId: wanted.has(group.id) ? id : null }));
+    }
+    for (const change of groupChanges) change.group.route_id = change.routeId;
     route.name = input.name;
     route.outbound_time = input.outbound_time ?? null;
     route.return_time = input.return_time ?? null;
