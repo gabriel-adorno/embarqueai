@@ -7,11 +7,28 @@ import { colors } from '@/src/theme/colors';
 type Props = {
   visible: boolean;
   title: string;
+  /** Texto explicativo abaixo do título. */
+  body?: string;
+  yesLabel?: string;
+  noLabel?: string;
+  /** Botão de confirmação em vermelho (ações destrutivas). */
+  danger?: boolean;
+  loading?: boolean;
   onYes: () => void;
   onNo: () => void;
 };
 
-export function ConfirmModal({ visible, title, onYes, onNo }: Props) {
+export function ConfirmModal({
+  visible,
+  title,
+  body,
+  yesLabel = 'Sim',
+  noLabel = 'Não',
+  danger = false,
+  loading = false,
+  onYes,
+  onNo,
+}: Props) {
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onNo}>
@@ -21,13 +38,19 @@ export function ConfirmModal({ visible, title, onYes, onNo }: Props) {
           onPress={() => undefined}
         >
           <View style={styles.handle} />
-          <Text style={styles.title}>{title}</Text>
+          <Text style={[styles.title, body ? styles.titleWithBody : null]}>{title}</Text>
+          {body ? <Text style={styles.body}>{body}</Text> : null}
           <View style={styles.row}>
             <View style={styles.col}>
-              <Button label="Não" variant="secondary" onPress={onNo} />
+              <Button label={noLabel} variant="secondary" disabled={loading} onPress={onNo} />
             </View>
             <View style={styles.col}>
-              <Button label="Sim" onPress={onYes} />
+              <Button
+                label={yesLabel}
+                variant={danger ? 'danger' : 'primary'}
+                loading={loading}
+                onPress={onYes}
+              />
             </View>
           </View>
         </Pressable>
@@ -63,6 +86,13 @@ const styles = StyleSheet.create({
     color: colors.ink,
     marginBottom: 20,
     letterSpacing: -0.4,
+  },
+  titleWithBody: { marginBottom: 10 },
+  body: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.textMuted,
+    marginBottom: 20,
   },
   row: {
     flexDirection: 'row',
