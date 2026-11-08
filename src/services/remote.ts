@@ -372,9 +372,18 @@ export async function listAbsences(groupId: string): Promise<Absence[]> {
   }
 }
 
-export async function setAbsence(groupId: string): Promise<void> {
+export async function listUpcomingAbsences(groupId: string, from: string): Promise<Absence[]> {
   try {
-    await api(`/groups/${groupId}/absences`, { method: 'POST' });
+    return asArray(await api<Absence[]>(`/groups/${groupId}/absences?from=${from}`));
+  } catch (err) {
+    if (isUnsupported(err)) return [];
+    throw err;
+  }
+}
+
+export async function setAbsence(groupId: string, day?: string): Promise<void> {
+  try {
+    await api(`/groups/${groupId}/absences${day ? `?date=${day}` : ''}`, { method: 'POST' });
   } catch (err) {
     if (isUnsupported(err)) {
       throw new Error('Avisar ausência exige a atualização do servidor.');
@@ -383,9 +392,9 @@ export async function setAbsence(groupId: string): Promise<void> {
   }
 }
 
-export async function clearAbsence(groupId: string): Promise<void> {
+export async function clearAbsence(groupId: string, day?: string): Promise<void> {
   try {
-    await api(`/groups/${groupId}/absences`, { method: 'DELETE' });
+    await api(`/groups/${groupId}/absences${day ? `?date=${day}` : ''}`, { method: 'DELETE' });
   } catch (err) {
     if (isUnsupported(err)) {
       throw new Error('Avisar ausência exige a atualização do servidor.');

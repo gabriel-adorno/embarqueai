@@ -4,8 +4,11 @@ import { acceptedPassengerIds } from '@/src/services/follows';
 import { uuid } from '@/src/lib/uuid';
 import * as remote from '@/src/services/remote';
 import { loadDb, mutateDb } from '@/src/services/store';
-import { todayInSaoPaulo } from '@/src/lib/day';
+import { addDays, todayInSaoPaulo } from '@/src/lib/day';
 import type { Absence, Group, GroupMember, Profile } from '@/src/types/database';
+
+/** Até quantos dias à frente dá para avisar ausência. */
+export const MAX_ABSENCE_DAYS = 60;
 
 export async function listGroupsForTransporter(
   transporterId: string,
@@ -168,13 +171,30 @@ export async function listAbsences(groupId: string): Promise<Absence[]> {
   return (db.absences ?? []).filter((item) => item.group_id === groupId && item.absent_on === day);
 }
 
-export async function setAbsence(groupId: string, userId: string): Promise<void> {
-  if (isRemote()) return remote.setAbsence(groupId);
-  const day = todayInSaoPaulo();
+/** Ausências de hoje em diante (até 60 dias), em ordem de data. */
+export async function listUpcomingAbsences(groupId: string): Promise<Absence[]> {
+  const today = todayInSaoPaulo();
+  if (isRemote()) return remote.listUpcomingAbsences(groupId, today);
+  const until = addDays(today, MAX_ABSENCE_DAYS);
+  const db = await loadDb();
+  return (db.absences ?? [])
+    .filter(
+      (item) => item.group_id === groupId && item.absent_on >= today && item.absent_on <= until,
+    )
+    .sort((a, b) => a.absent_on.localeCompare(b.absent_on));
+}
+
+export async function setAbsence(groupId: string, userId: string, onDay?: string): Promise<void> {
+  if (isRemote()) return remote.setAbsence(groupId, onDay);
+  const today = todayInSaoPaulo();
+  const day = onDay ?? today;
+  if (day < today || day > addDays(today, MAX_ABSENCE_DAYS)) {
+    throw new Error('Escolha uma data entre hoje e os próximos 60 dias.');
+  }
   await mutateDb((db) => {
     const group = db.groups.find((item) => item.id === groupId);
     if (!group) throw new Error('Grupo não encontrado.');
-    const live = db.trips.some(
+    const live = day === today && db.trips.some(
       (trip) =>
         trip.status === 'in_progress' &&
         (trip.group_id === groupId || (group.route_id && trip.route_id === group.route_id)),
@@ -194,9 +214,9 @@ export async function setAbsence(groupId: string, userId: string): Promise<void>
   });
 }
 
-export async function clearAbsence(groupId: string, userId: string): Promise<void> {
-  if (isRemote()) return remote.clearAbsence(groupId);
-  const day = todayInSaoPaulo();
+export async function clearAbsence(groupId: string, userId: string, onDay?: string): Promise<void> {
+  if (isRemote()) return remote.clearAbsence(groupId, onDay);
+  const day = onDay ?? todayInSaoPaulo();
   await mutateDb((db) => {
     db.absences = (db.absences ?? []).filter(
       (item) =>
